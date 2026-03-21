@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+/* Nếu bạn muốn định nghĩa các biến màu/font từ DESIGN.md trực tiếp trong CSS thay vì file config */
+@theme {
+  --color-primary: #00675c;
+  --color-primary-dim: #005a50;
+  --color-background: #d3fffc;
+  --font-headline: "Plus Jakarta Sans", sans-serif;
+  --font-body: "Be Vietnam Pro", sans-serif;
+  --radius-xl: 3rem;
+}

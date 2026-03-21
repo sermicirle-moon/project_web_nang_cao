@@ -1,0 +1,11 @@
+--- Chặn rác của React ---
+node_modules/
+dist/
+.env
+
+--- Chặn rác của .NET ---
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+appsettings.Development.json
