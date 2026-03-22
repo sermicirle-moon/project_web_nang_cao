@@ -2,10 +2,38 @@
 
 /* Nếu bạn muốn định nghĩa các biến màu/font từ DESIGN.md trực tiếp trong CSS thay vì file config */
 @theme {
+  /* --- Colors (Bảng màu Whimsical Precision) --- */
+  /* Nền chính - Base Layer */
+  --color-background: #d3fffc; 
+  --color-surface: #d3fffc;
+
+  /* Lớp thứ 2 - Section Layer (Màu Teal nhạt hơn) */
+  --color-surface-container-low: #bafdfa; 
+  
+  /* Lớp cao nhất - Card Layer (Trắng tinh để nổi bật) */
+  --color-surface-container-lowest: #ffffff; 
+
+  /* Tông màu chủ đạo */
   --color-primary: #00675c;
   --color-primary-dim: #005a50;
-  --color-background: #d3fffc;
+  --color-primary-container: #5bf4de;
+  
+  /* Tông màu bổ trợ (Cho Dopamine Hit) */
+  --color-secondary: #006a34;
+  --color-secondary-container: #6dfe9c;
+  --color-tertiary: #006385;
+  --color-tertiary-container: #1dc0fe;
+
+  /* Màu chữ (Tránh dùng đen thuần túy) */
+  --color-on-surface: #003534;
+  --color-on-surface-variant: #296462;
+
+  /* --- Typography --- */
   --font-headline: "Plus Jakarta Sans", sans-serif;
   --font-body: "Be Vietnam Pro", sans-serif;
+
+  /* --- Radius (Organic Asymmetry) --- */
+  --radius-md: 1rem;
+  --radius-lg: 2rem;
   --radius-xl: 3rem;
 }
