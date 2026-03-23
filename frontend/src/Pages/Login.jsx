@@ -1,110 +1,128 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
+import Button from '../Components/UI/button';
+import person from '../assets/img/person.png'; // hoặc bất kỳ hình nào bạn có
 
 function Login() {
-    const navigate = useNavigate();
-    
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    
-    // Tách riêng state để dễ quản lý màu sắc và trạng thái
-    const [message, setMessage] = useState('');
-    const [isError, setIsError] = useState(false);
-    const [isLoading, setIsLoading] = useState(false); // Thêm state loading để chặn spam click
+  const navigate = useNavigate();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [isError, setIsError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setMessage('Đang xử lý...');
-        setIsError(false);
-        setIsLoading(true); // Bắt đầu load thì khóa nút lại
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setMessage('Đang xử lý...');
+    setIsError(false);
+    setIsLoading(true);
 
-        try {
-            const response = await api.post('/auth/login', {
-                username: username,
-                password: password
-            });
+    try {
+      const response = await api.post('/auth/login', {
+        username,
+        password
+      });
+      const data = response.data;
+      const userRole = data.roles?.[0] || 'User';
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', userRole);
+      setMessage(`Chào mừng ${data.fullName}! Đăng nhập thành công.`);
+      setIsError(false);
+      setTimeout(() => navigate('/'), 1000);
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Sai tài khoản hoặc mật khẩu!');
+      setIsError(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            const data = response.data;
-            
-            // Lấy role an toàn, tránh lỗi crash app nếu data.roles bị undefined
-            const userRole = data.roles?.[0] || 'User'; 
+  return (
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      <div className="grid md:grid-cols-2 gap-12 items-center">
+        {/* Left side - Illustration */}
+        <div className="hidden md:block relative">
+          <div className="bg-primary-container/20 rounded-2xl p-8">
+            <img src={person} alt="Login illustration" className="w-full max-w-md mx-auto" />
+          </div>
+          <div className="mt-8 text-center">
+            <h2 className="font-headline font-black text-3xl text-on-surface">TaskMaster Pro</h2>
+            <p className="text-on-surface-variant mt-2">Access your profile and settings</p>
+          </div>
+        </div>
 
-            localStorage.setItem('token', data.token);
-            localStorage.setItem('role', userRole); 
+        {/* Right side - Form */}
+        <div className="bg-surface-container-lowest p-8 md:p-12 rounded-2xl shadow-xl">
+          <h1 className="font-headline font-black text-3xl text-on-surface text-center mb-6">Welcome Back</h1>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block font-body font-medium text-on-surface mb-2">EMAIL ADDRESS</label>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-surface-container-low rounded-xl focus:border-primary focus:ring-0 outline-none transition"
+                required
+              />
+            </div>
+            <div>
+              <label className="block font-body font-medium text-on-surface mb-2">PASSWORD</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-surface-container-low rounded-xl focus:border-primary focus:ring-0 outline-none transition"
+                required
+              />
+            </div>
 
-            setMessage(`Chào mừng ${data.fullName}! Đăng nhập thành công với quyền ${userRole}.`);
-            setIsError(false);
-
-            // Chuyển hướng sang trang Dashboard sau 1 giây (hoặc chuyển luôn tùy bạn)
-            setTimeout(() => {
-                navigate('/LandingPage'); // Chuyển hướng đến trang chính sau khi đăng nhập thành công
-            }, 1000);
-            
-        } catch (error) {
-            setMessage(error.response?.data?.message || 'Sai tài khoản hoặc mật khẩu!');
-            setIsError(true); // Đánh dấu là có lỗi để hiện màu đỏ
-        } finally {
-            setIsLoading(false); // Xong xuôi thì mở khóa nút
-        }
-    };
-
-    return (
-        <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
-            <h2>Đăng Nhập Zentask</h2>
-            
-            {/* Hiển thị thông báo chuẩn logic hơn */}
             {message && (
-                <p style={{ color: isError ? 'red' : 'green', fontWeight: 'bold' }}>
-                    {message}
-                </p>
+              <div className={`p-3 rounded-xl text-center ${isError ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                {message}
+              </div>
             )}
 
-            <form onSubmit={handleLogin}>
-                <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px' }}>Tài khoản:</label>
-                    <input 
-                        type="text" 
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                        required
-                    />
-                </div>
-                
-                <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px' }}>Mật khẩu:</label>
-                    <input 
-                        type="password" 
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={{ width: '100%', padding: '8px', boxSizing: 'border-box' }}
-                        required
-                    />
-                </div>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={isLoading}
+              className="w-full justify-center"
+            >
+              {isLoading ? 'ĐANG ĐĂNG NHẬP...' : 'LOGIN'}
+            </Button>
 
-                {/* Vô hiệu hóa nút (disabled) và đổi màu khi đang xử lý */}
-                <button 
-                    type="submit" 
-                    disabled={isLoading}
-                    style={{ 
-                        width: '100%', 
-                        padding: '10px', 
-                        background: isLoading ? '#6c757d' : '#007bff', 
-                        color: 'white', 
-                        border: 'none', 
-                        borderRadius: '4px', 
-                        cursor: isLoading ? 'not-allowed' : 'pointer' 
-                    }}
-                >
-                    {isLoading ? 'Đang đăng nhập...' : 'Đăng Nhập'}
-                </button>
-            </form>
-            <div style={{ marginTop: '15px', textAlign: 'center' }}>
-                <p>Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link></p>
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-surface-container-low"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-surface-container-lowest text-on-surface-variant">OR</span>
+              </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <button className="flex items-center justify-center gap-2 py-3 border-2 border-surface-container-low rounded-xl hover:bg-surface-container-low transition">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+                <span className="font-body font-medium">Google</span>
+              </button>
+              <button className="flex items-center justify-center gap-2 py-3 border-2 border-surface-container-low rounded-xl hover:bg-surface-container-low transition">
+                <span className="material-symbols-outlined">apple</span>
+                <span className="font-body font-medium">Apple</span>
+              </button>
+            </div>
+
+            <div className="text-center mt-6">
+              <p className="text-on-surface-variant">
+                Don't have an account?{' '}
+                <Link to="/register" className="text-primary font-bold hover:underline">Create account</Link>
+              </p>
+            </div>
+          </form>
         </div>
-    );
+      </div>
+    </div>
+  );
 }
 
 export default Login;
