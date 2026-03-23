@@ -31,34 +31,52 @@ namespace backend.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterDTO dto)
         {
-            // Kiểm tra xem username đã ai dùng chưa
-            var userExists = await _userManager.FindByNameAsync(dto.Username);
-            if (userExists != null)
-                return BadRequest(new { Message = "Tên tài khoản đã tồn tại!" });
-
-            // Tạo user mới
-            ApplicationUser user = new ApplicationUser
+            try
             {
-                Email = dto.Email,
-                SecurityStamp = Guid.NewGuid().ToString(),
-                UserName = dto.Username,
-                FullName = dto.FullName
-            };
+                var userExists = await _userManager.FindByNameAsync(dto.Username);
+                if (userExists != null)
+                    return BadRequest(new { Message = "Tên tài khoản đã tồn tại!" });
 
-            // Lưu vào database (Identity tự động băm mật khẩu ở bước này)
-            var result = await _userManager.CreateAsync(user, dto.Password);
-            if (!result.Succeeded)
-                return StatusCode(500, new { Message = "Tạo tài khoản thất bại!", Errors = result.Errors });
+                ApplicationUser user = new ApplicationUser
+                {
+                    Email = dto.Email,
+                    SecurityStamp = Guid.NewGuid().ToString(),
+                    UserName = dto.Username,
+                    FullName = dto.FullName
+                };
 
-            // Tự động gán quyền "Free" cho người dùng mới
-            if (!await _roleManager.RoleExistsAsync("Free"))
-                await _roleManager.CreateAsync(new IdentityRole("Free"));
-            if (!await _roleManager.RoleExistsAsync("Premium"))
-                await _roleManager.CreateAsync(new IdentityRole("Premium"));
+                var result = await _userManager.CreateAsync(user, dto.Password);
+                if (!result.Succeeded)
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    Console.WriteLine($"Lỗi tạo user: {errors}");
+                    // Trả về BadRequest (400) với message rõ ràng, frontend sẽ hiển thị
+                    return BadRequest(new { Message = errors });
+                }
 
-            await _userManager.AddToRoleAsync(user, "Free");
+                // Tạo roles nếu chưa tồn tại
+                if (!await _roleManager.RoleExistsAsync("Free"))
+                {
+                    var roleResult = await _roleManager.CreateAsync(new IdentityRole("Free"));
+                    if (!roleResult.Succeeded)
+                        Console.WriteLine($"Lỗi tạo role Free: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                }
+                if (!await _roleManager.RoleExistsAsync("Premium"))
+                {
+                    var roleResult = await _roleManager.CreateAsync(new IdentityRole("Premium"));
+                    if (!roleResult.Succeeded)
+                        Console.WriteLine($"Lỗi tạo role Premium: {string.Join(", ", roleResult.Errors.Select(e => e.Description))}");
+                }
 
-            return Ok(new { Message = "Tạo tài khoản thành công!" });
+                await _userManager.AddToRoleAsync(user, "Free");
+
+                return Ok(new { Message = "Tạo tài khoản thành công!" });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"LỖI ĐĂNG KÝ (chi tiết): {ex}");
+                return StatusCode(500, new { Message = "Lỗi server: " + ex.Message });
+            }
         }
 
         // ----------------------------------------------------
