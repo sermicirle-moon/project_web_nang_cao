@@ -5,17 +5,14 @@ export default function Sidebar() {
   const navItems = [
     { path: "/features", icon: "task_alt", label: "Công việc" },
     { path: "/calendar", icon: "calendar_month", label: "Lịch" },
+    { path: "/eisenhower", icon: "grid_view", label: "Ma trận" },       // thay đổi icon nếu muốn
+    { path: "/timefocus", icon: "timer", label: "Time Focus" },
     { path: "/habits", icon: "vital_signs", label: "Thói quen" },
   ];
 
   return (
     // w-16 tương đương 64px - Cực kỳ nhỏ gọn
     <aside className="w-16 bg-[#fbfbfb] border-r border-gray-200 h-full flex flex-col items-center py-4 shrink-0 z-20">
-      
-      {/* Avatar người dùng trên cùng */}
-      <div className="w-9 h-9 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm shadow-sm cursor-pointer mb-6 hover:opacity-80 transition-opacity">
-        M
-      </div>
 
       {/* Các công cụ chính (Chỉ dùng Icon) */}
       <nav className="flex flex-col gap-2 w-full px-2">

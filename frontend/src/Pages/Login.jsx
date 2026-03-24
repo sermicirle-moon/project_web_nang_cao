@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 import Button from '../Components/UI/button';
 import person from '../assets/img/person.png'; // hoặc bất kỳ hình nào bạn có
-
+import { useAuth } from '../context/AuthContext'; // thêm
 function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth(); // thêm
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -25,11 +26,15 @@ function Login() {
       });
       const data = response.data;
       const userRole = data.roles?.[0] || 'User';
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('role', userRole);
+      login({
+        token: data.token,
+        role: userRole,
+        fullName: data.fullName,
+        username: username,
+      });
       setMessage(`Chào mừng ${data.fullName}! Đăng nhập thành công.`);
       setIsError(false);
-      setTimeout(() => navigate('/'), 1000);
+      setTimeout(() => navigate('/features'), 1000);
     } catch (error) {
       setMessage(error.response?.data?.message || 'Sai tài khoản hoặc mật khẩu!');
       setIsError(true);
