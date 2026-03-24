@@ -5,6 +5,8 @@ import Register from './Pages/Register';
 import Index from './Pages/Task/Index';
 import MainLayout from './Layouts/MainLayout';
 import AuthLayout from './Layouts/AuthLayout';
+import CalendarIndex from './Pages/Calendar/Index';
+
 function App() {
   return (
     <Router>
@@ -42,6 +44,9 @@ function App() {
             </AuthLayout>
           } 
         />
+
+        <Route path="/calendar" element={<CalendarIndex />} />
+
       </Routes>
     </Router>
   );
