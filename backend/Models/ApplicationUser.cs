@@ -10,6 +10,7 @@ namespace backend.Models
         public string? Bio { get; set; }
         public bool IsActive { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
+        public ICollection<TaskList> TaskLists { get; set; } = new List<TaskList>();
+        public ICollection<TaskItem> Tasks { get;set; } = new List<TaskItem>();
     }
 }

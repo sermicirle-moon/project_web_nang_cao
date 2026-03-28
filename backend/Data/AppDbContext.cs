@@ -9,6 +9,11 @@ namespace backend.Data
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
+
+        public DbSet<TaskList> TaskLists { get; set; }
+        public DbSet<TaskItem> TaskItems { get; set; }
+        public DbSet<Attachment> Attachments { get; set; }
+        public DbSet<Tag> Tags { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
