@@ -9,5 +9,7 @@
         public string UserId { get; set; } = string.Empty;
         public ApplicationUser User { get; set; } = null!;
         public ICollection<TaskItem> Tasks { get; set; } = new List<TaskItem>();
+        public int? FolderId { get; set; }
+        public TaskFolder? Folder { get; set; }
     }
 }

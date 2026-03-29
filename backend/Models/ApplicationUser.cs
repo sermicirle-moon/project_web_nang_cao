@@ -12,5 +12,6 @@ namespace backend.Models
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public ICollection<TaskList> TaskLists { get; set; } = new List<TaskList>();
         public ICollection<TaskItem> Tasks { get;set; } = new List<TaskItem>();
+        public ICollection<TaskFolder> TaskFolders { get; set; } = new List<TaskFolder>();
     }
 }

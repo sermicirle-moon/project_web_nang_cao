@@ -14,6 +14,8 @@ namespace backend.Data
         public DbSet<TaskItem> TaskItems { get; set; }
         public DbSet<Attachment> Attachments { get; set; }
         public DbSet<Tag> Tags { get; set; }
+
+        public DbSet<TaskFolder> TaskFolders { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
