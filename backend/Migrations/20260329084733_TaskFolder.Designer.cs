@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using backend.Data;
 
@@ -11,9 +12,11 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260329084733_TaskFolder")]
+    partial class TaskFolder
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -337,38 +340,6 @@ namespace backend.Migrations
                     b.ToTable("Tags");
                 });
 
-            modelBuilder.Entity("backend.Models.TaskFolder", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTimeOffset?>("UpdateAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("TaskFolders");
-                });
-
             modelBuilder.Entity("backend.Models.TaskItem", b =>
                 {
                     b.Property<int>("Id")
@@ -449,9 +420,6 @@ namespace backend.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("FolderId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Icon")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -474,8 +442,6 @@ namespace backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationUserId");
-
-                    b.HasIndex("FolderId");
 
                     b.HasIndex("UserId");
 
@@ -570,17 +536,6 @@ namespace backend.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("backend.Models.TaskFolder", b =>
-                {
-                    b.HasOne("backend.Models.ApplicationUser", "User")
-                        .WithMany("TaskFolders")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("backend.Models.TaskItem", b =>
                 {
                     b.HasOne("backend.Models.TaskItem", "ParentTask")
@@ -612,33 +567,20 @@ namespace backend.Migrations
                         .WithMany("TaskLists")
                         .HasForeignKey("ApplicationUserId");
 
-                    b.HasOne("backend.Models.TaskFolder", "Folder")
-                        .WithMany("TaskLists")
-                        .HasForeignKey("FolderId");
-
                     b.HasOne("backend.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Folder");
-
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("backend.Models.ApplicationUser", b =>
                 {
-                    b.Navigation("TaskFolders");
-
                     b.Navigation("TaskLists");
 
                     b.Navigation("Tasks");
-                });
-
-            modelBuilder.Entity("backend.Models.TaskFolder", b =>
-                {
-                    b.Navigation("TaskLists");
                 });
 
             modelBuilder.Entity("backend.Models.TaskItem", b =>
