@@ -20,7 +20,7 @@ namespace backend.Data
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-            // Configure your entities here if needed
+            
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

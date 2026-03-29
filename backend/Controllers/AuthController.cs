@@ -97,6 +97,7 @@ namespace backend.Controllers
                 // Gói ghém thông tin (Claims) để nhét vào Token
                 var authClaims = new List<Claim>
                 {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id),   // ← THÊM DÒNG NÀY
                     new Claim(ClaimTypes.Name, user.UserName),
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                 };
