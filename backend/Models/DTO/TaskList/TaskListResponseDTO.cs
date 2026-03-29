@@ -1,6 +1,6 @@
 ﻿namespace backend.Models.DTO.TaskList
 {
-    public class TaskListResponeDTO
+    public class TaskListResponseDTO
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
