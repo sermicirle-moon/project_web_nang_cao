@@ -366,7 +366,7 @@ namespace backend.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("TaskFolders");
+                    b.ToTable("TaskFolders", (string)null);
                 });
 
             modelBuilder.Entity("backend.Models.TaskItem", b =>
@@ -376,6 +376,9 @@ namespace backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -418,6 +421,8 @@ namespace backend.Migrations
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
 
                     b.HasIndex("ParentTaskId");
 
@@ -583,6 +588,10 @@ namespace backend.Migrations
 
             modelBuilder.Entity("backend.Models.TaskItem", b =>
                 {
+                    b.HasOne("backend.Models.ApplicationUser", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("ApplicationUserId");
+
                     b.HasOne("backend.Models.TaskItem", "ParentTask")
                         .WithMany("SubTasks")
                         .HasForeignKey("ParentTaskId")
@@ -591,12 +600,12 @@ namespace backend.Migrations
                     b.HasOne("backend.Models.TaskList", "TaskList")
                         .WithMany("Tasks")
                         .HasForeignKey("TaskListId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("backend.Models.ApplicationUser", "User")
-                        .WithMany("Tasks")
+                        .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("ParentTask");
@@ -614,7 +623,8 @@ namespace backend.Migrations
 
                     b.HasOne("backend.Models.TaskFolder", "Folder")
                         .WithMany("TaskLists")
-                        .HasForeignKey("FolderId");
+                        .HasForeignKey("FolderId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("backend.Models.ApplicationUser", "User")
                         .WithMany()

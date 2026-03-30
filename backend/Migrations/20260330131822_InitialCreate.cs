@@ -189,6 +189,29 @@ namespace backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "TaskFolders",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    UpdateAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_TaskFolders", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_TaskFolders_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TaskLists",
                 columns: table => new
                 {
@@ -199,6 +222,7 @@ namespace backend.Migrations
                     Icon = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: true),
                     Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    FolderId = table.Column<int>(type: "int", nullable: true),
                     ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     UpdateAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
@@ -218,6 +242,11 @@ namespace backend.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_TaskLists_TaskFolders_FolderId",
+                        column: x => x.FolderId,
+                        principalTable: "TaskFolders",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -235,6 +264,7 @@ namespace backend.Migrations
                     TaskListId = table.Column<int>(type: "int", nullable: true),
                     UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     ParentTaskId = table.Column<int>(type: "int", nullable: true),
+                    ApplicationUserId = table.Column<string>(type: "nvarchar(450)", nullable: true),
                     CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     UpdateAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
                     IsDeleted = table.Column<bool>(type: "bit", nullable: false)
@@ -243,10 +273,16 @@ namespace backend.Migrations
                 {
                     table.PrimaryKey("PK_TaskItems", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_TaskItems_AspNetUsers_ApplicationUserId",
+                        column: x => x.ApplicationUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_TaskItems_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_TaskItems_TaskItems_ParentTaskId",
                         column: x => x.ParentTaskId,
@@ -257,8 +293,7 @@ namespace backend.Migrations
                         name: "FK_TaskItems_TaskLists_TaskListId",
                         column: x => x.TaskListId,
                         principalTable: "TaskLists",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -359,6 +394,16 @@ namespace backend.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_TaskFolders_UserId",
+                table: "TaskFolders",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TaskItems_ApplicationUserId",
+                table: "TaskItems",
+                column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TaskItems_ParentTaskId",
                 table: "TaskItems",
                 column: "ParentTaskId");
@@ -377,6 +422,11 @@ namespace backend.Migrations
                 name: "IX_TaskLists_ApplicationUserId",
                 table: "TaskLists",
                 column: "ApplicationUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TaskLists_FolderId",
+                table: "TaskLists",
+                column: "FolderId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_TaskLists_UserId",
@@ -424,6 +474,9 @@ namespace backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "TaskLists");
+
+            migrationBuilder.DropTable(
+                name: "TaskFolders");
 
             migrationBuilder.DropTable(
                 name: "AspNetUsers");

@@ -12,8 +12,8 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260329084733_TaskFolder")]
-    partial class TaskFolder
+    [Migration("20260330131822_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -340,6 +340,38 @@ namespace backend.Migrations
                     b.ToTable("Tags");
                 });
 
+            modelBuilder.Entity("backend.Models.TaskFolder", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTimeOffset?>("UpdateAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("TaskFolders", (string)null);
+                });
+
             modelBuilder.Entity("backend.Models.TaskItem", b =>
                 {
                     b.Property<int>("Id")
@@ -347,6 +379,9 @@ namespace backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
@@ -390,6 +425,8 @@ namespace backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ApplicationUserId");
+
                     b.HasIndex("ParentTaskId");
 
                     b.HasIndex("TaskListId");
@@ -420,6 +457,9 @@ namespace backend.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("FolderId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Icon")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
@@ -442,6 +482,8 @@ namespace backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ApplicationUserId");
+
+                    b.HasIndex("FolderId");
 
                     b.HasIndex("UserId");
 
@@ -536,8 +578,23 @@ namespace backend.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("backend.Models.TaskFolder", b =>
+                {
+                    b.HasOne("backend.Models.ApplicationUser", "User")
+                        .WithMany("TaskFolders")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("backend.Models.TaskItem", b =>
                 {
+                    b.HasOne("backend.Models.ApplicationUser", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("ApplicationUserId");
+
                     b.HasOne("backend.Models.TaskItem", "ParentTask")
                         .WithMany("SubTasks")
                         .HasForeignKey("ParentTaskId")
@@ -546,12 +603,12 @@ namespace backend.Migrations
                     b.HasOne("backend.Models.TaskList", "TaskList")
                         .WithMany("Tasks")
                         .HasForeignKey("TaskListId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("backend.Models.ApplicationUser", "User")
-                        .WithMany("Tasks")
+                        .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("ParentTask");
@@ -567,20 +624,34 @@ namespace backend.Migrations
                         .WithMany("TaskLists")
                         .HasForeignKey("ApplicationUserId");
 
+                    b.HasOne("backend.Models.TaskFolder", "Folder")
+                        .WithMany("TaskLists")
+                        .HasForeignKey("FolderId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("backend.Models.ApplicationUser", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Folder");
+
                     b.Navigation("User");
                 });
 
             modelBuilder.Entity("backend.Models.ApplicationUser", b =>
                 {
+                    b.Navigation("TaskFolders");
+
                     b.Navigation("TaskLists");
 
                     b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("backend.Models.TaskFolder", b =>
+                {
+                    b.Navigation("TaskLists");
                 });
 
             modelBuilder.Entity("backend.Models.TaskItem", b =>
