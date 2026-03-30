@@ -20,7 +20,29 @@ namespace backend.Data
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-            
+            modelBuilder.Entity<TaskList>()
+               .HasOne(t => t.Folder)
+               .WithMany(f => f.TaskLists)
+               .HasForeignKey(t => t.FolderId)
+               .OnDelete(DeleteBehavior.NoAction); // ❗ QUAN TRỌNG
+
+            modelBuilder.Entity<TaskList>()
+                .HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<TaskItem>()
+                .HasOne(t => t.TaskList)
+                .WithMany(l => l.Tasks)
+                .HasForeignKey(t => t.TaskListId)
+                .OnDelete(DeleteBehavior.NoAction); // ❗ tránh lỗi sau này
+
+            modelBuilder.Entity<TaskItem>()
+                .HasOne(t => t.User)
+                .WithMany()
+                .HasForeignKey(t => t.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
