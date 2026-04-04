@@ -13,7 +13,6 @@ namespace backend.Controllers
     {
         private readonly ITaskListService _taskListService;
 
-        // Bơm "Đầu bếp" vào cho "Anh phục vụ" dùng
         public TaskListsController(ITaskListService taskListService)
         {
             _taskListService = taskListService;
@@ -21,18 +20,15 @@ namespace backend.Controllers
 
         // ==========================================================
         // API 1: Lấy dữ liệu Menu bên trái
-        // Lệnh gọi: GET /api/tasklists/sidebar
         // ==========================================================
         [HttpGet("sidebar")]
         public async Task<IActionResult> GetSidebar()
         {
-            // 1. Lấy ID của người dùng đang đăng nhập từ Thẻ thông hành (Token)
+
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // 2. Nhờ Đầu bếp lấy dữ liệu
             var sidebarData = await _taskListService.GetSideBarDataAsync(userId);
 
-            // 3. Bưng ra cho khách kèm nụ cười (Mã 200 OK)
             return Ok(sidebarData);
         }
 
@@ -64,6 +60,31 @@ namespace backend.Controllers
 
             // 3. Trả về thông tin List vừa tạo thành công
             return Ok(newList);
+        }
+
+
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateList(int id, [FromBody] UpdateTaskListDTO dto)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var success = await _taskListService.UpdateTaskListAsync(id, userId, dto);
+            if (!success) return NotFound(new { Message = "Không tìm thấy danh sách hoặc bạn không có quyền!" });
+
+            return Ok(new { Message = "Cập nhật thành công!" });
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteList(int id)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+
+            var success = await _taskListService.DeleteTaskListAsync(id, userId);
+            if (!success) return NotFound(new { Message = "Không tìm thấy danh sách hoặc bạn không có quyền!" });
+
+            return Ok(new { Message = "Xóa thành công!" });
         }
     }
 }

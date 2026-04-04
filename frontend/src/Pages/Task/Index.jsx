@@ -1,31 +1,32 @@
+import { useState } from "react"; // THÊM DÒNG NÀY
 import Navbar from "../../Components/Navbar"; 
 import Sidebar from "../../Layouts/sidebar";
 import ListManager from "../../Layouts/TaskManagement/ListManager"; 
 import Body from "./Body"; 
 
 export default function Index() {
+  // --- STATE CẦU NỐI ---
+  // Mặc định khi mới vào web sẽ chọn mục "Hôm nay"
+  const [activeList, setActiveList] = useState({ id: 'today', name: 'Hôm nay' });
+
   return (
-    // Đảm bảo nền ngoài cùng là bg-white thay vì bg-surface
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-white text-gray-800">
-      
-      {/* 1. Navbar trên cùng */}
       <div className="shrink-0 z-30 relative border-b border-gray-100">
         <Navbar />
       </div>
 
-      {/* Phần thân dưới: Chứa 3 cột */}
       <div className="flex flex-1 overflow-hidden relative bg-white">
-        
-        {/* 2. Cột 1: Sidebar siêu mỏng */}
         <Sidebar />
 
-        {/* 3. Cột 2: Menu quản lý List */}
-        <ListManager />
+        {/* TRUYỀN HÀM CHỌN LIST CHO CỘT BÊN TRÁI */}
+        <ListManager 
+           activeListId={activeList.id} 
+           onSelectList={setActiveList} 
+        />
 
-        {/* 4. CỘT 3: NỘI DUNG CHÍNH (THỦ PHẠM NẰM Ở ĐÂY) */}
-        {/* TÔI ĐÃ XÓA SẠCH px, py VÀ ĐẢM BẢO NÓ LÀ bg-white */}
+        {/* TRUYỀN DỮ LIỆU LIST CHO CỘT BÊN PHẢI */}
         <div className="flex-1 overflow-y-auto bg-white relative z-0">
-          <Body />
+          <Body activeList={activeList} />
         </div>
         
       </div>

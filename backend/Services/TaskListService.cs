@@ -98,5 +98,95 @@ namespace backend.Services
                 Icon = newList.Icon
             };
         }
+
+        // ==========================================
+        // SỬA DANH SÁCH (LIST)
+        // ==========================================
+        public async Task<bool> UpdateTaskListAsync(int listId, string userId, UpdateTaskListDTO dto)
+        {
+            var list = await _context.TaskLists.FirstOrDefaultAsync(l => l.Id == listId && l.UserId == userId);
+            if (list == null) return false;
+
+            // Cập nhật tên, màu, icon
+            list.Name = dto.Name;
+            list.Color = dto.Color;
+            list.Icon = dto.Icon;
+
+            // --- LOGIC CHUYỂN FOLDER ---
+            if (string.IsNullOrWhiteSpace(dto.FolderName))
+            {
+                list.FolderId = null; // Nếu bỏ trống tên Folder -> Lôi List này ra ngoài đứng độc lập
+            }
+            else
+            {
+                var existingFolder = await _context.TaskFolders.FirstOrDefaultAsync(f => f.Name == dto.FolderName && f.UserId == userId);
+                if (existingFolder != null)
+                {
+                    list.FolderId = existingFolder.Id; // Bỏ vào Folder có sẵn
+                }
+                else
+                {
+                    // Tạo Folder mới tinh và nhét List vào
+                    var newFolder = new TaskFolder { Name = dto.FolderName, UserId = userId };
+                    _context.TaskFolders.Add(newFolder);
+                    await _context.SaveChangesAsync(); // Lưu để lấy ID
+                    list.FolderId = newFolder.Id;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ==========================================
+        // XÓA DANH SÁCH (LIST)
+        // ==========================================
+        public async Task<bool> DeleteTaskListAsync(int listId, string userId)
+        {
+            var list = await _context.TaskLists.FirstOrDefaultAsync(l => l.Id == listId && l.UserId == userId);
+            if (list == null) return false;
+
+            _context.TaskLists.Remove(list);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ==========================================
+        // SỬA THƯ MỤC (FOLDER)
+        // ==========================================
+        public async Task<bool> UpdateTaskFolderAsync(int folderId, string userId, UpdateTaskFolderDTO dto)
+        {
+            var folder = await _context.TaskFolders.FirstOrDefaultAsync(f => f.Id == folderId && f.UserId == userId);
+            if (folder == null) return false;
+
+            folder.Name = dto.Name;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ==========================================
+        // XÓA THƯ MỤC (FOLDER)
+        // ==========================================
+        public async Task<bool> DeleteTaskFolderAsync(int folderId, string userId)
+        {
+            // Kéo theo cả các List con bên trong để xóa sạch sẽ (tránh rác Database)
+            var folder = await _context.TaskFolders
+                .Include(f => f.TaskLists)
+                .FirstOrDefaultAsync(f => f.Id == folderId && f.UserId == userId);
+
+            if (folder == null) return false;
+
+            // EF Core sẽ tự động xóa các TaskLists con nếu đã cấu hình Cascade, 
+            // nhưng lệnh này cho chắc ăn: xóa hết List con trước khi xóa Folder
+            if (folder.TaskLists.Any())
+            {
+                _context.TaskLists.RemoveRange(folder.TaskLists);
+            }
+
+            _context.TaskFolders.Remove(folder);
+            await _context.SaveChangesAsync();
+            return true;
+        }
     }
 }
