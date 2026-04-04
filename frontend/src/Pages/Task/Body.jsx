@@ -1,7 +1,8 @@
 // File: src/Pages/TaskManagement/Body.jsx
 import { useState } from "react";
 
-export default function Body() {
+// ĐÃ SỬA: Nhận activeList từ Index truyền xuống
+export default function Body({ activeList }) {
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [inputValue, setInputValue] = useState("");
 
@@ -60,18 +61,15 @@ export default function Body() {
   };
 
   return (
-    // THAY ĐỔI LỚN 1: bg-white để phủ kín nền, min-h-full để trải dài từ trên xuống
     <div className="flex w-full h-full bg-white">
       
       {/* ================= CỘT TRÁI: DANH SÁCH TASK ================= */}
-      {/* THAY ĐỔI LỚN 2: Chuyển toàn bộ padding vào đây. Cột này dùng flex-1 để tự co giãn */}
       <div className="flex-1 p-6 transition-all">
-        
-        {/* THAY ĐỔI LỚN 3: Bỏ "mx-auto". Giờ đây khối này KHÔNG BAO GIỜ bị nhảy xê dịch */}
         <div className="max-w-3xl">
           
+          {/* ĐÃ SỬA: Tiêu đề tự động thay đổi theo List đang chọn */}
           <div className="mb-6 flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold text-gray-800">Hôm nay</h1>
+            <h1 className="text-2xl font-bold text-gray-800">{activeList?.name || 'Đang tải...'}</h1>
             <span className="text-sm font-medium text-gray-400">T2, 23 thg 3</span>
           </div>
 
@@ -82,7 +80,8 @@ export default function Body() {
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => setIsInputFocused(true)}
               onKeyDown={handleKeyDown}
-              placeholder="Thêm tác vụ vào 'Hôm nay', nhấn Enter để lưu" 
+              // ĐÃ SỬA: Placeholder đổi tên động theo List
+              placeholder={`Thêm tác vụ vào '${activeList?.name || 'danh sách'}', nhấn Enter để lưu`} 
               className="w-full px-4 py-3.5 outline-none text-[15px] text-gray-800 placeholder:text-gray-400"
             />
             {isInputFocused && (
@@ -156,7 +155,6 @@ export default function Body() {
       </div>
 
       {/* ================= CỘT PHẢI: CHI TIẾT TASK (DETAIL) ================= */}
-      {/* THAY ĐỔI LỚN 4: Chiếm toàn bộ không gian từ mép trên tới mép dưới nhờ min-h-[calc(100vh-80px)] */}
       {selectedTask && (
         <div className="w-[360px] xl:w-[420px] bg-[#fafafa] border-l border-gray-200 flex flex-col sticky top-0 min-h-[calc(100vh-80px)] shrink-0 shadow-[-10px_0_20px_rgba(0,0,0,0.03)] z-10 transition-transform duration-300">
           
@@ -181,7 +179,8 @@ export default function Body() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Dự án</span>
-                <button className="text-sm font-medium text-gray-800 hover:bg-gray-100 px-2 py-1 rounded transition-colors flex items-center gap-1">Zentask <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+                {/* ĐÃ SỬA: Chỗ này cũng có thể lấy tên List động luôn */}
+                <button className="text-sm font-medium text-gray-800 hover:bg-gray-100 px-2 py-1 rounded transition-colors flex items-center gap-1">{activeList?.name || 'Không xác định'} <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Ngày hết hạn</span>
