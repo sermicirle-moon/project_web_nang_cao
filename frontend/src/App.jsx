@@ -6,7 +6,7 @@ import Index from './Pages/Task/Index';
 import MainLayout from './Layouts/MainLayout';
 import AuthLayout from './Layouts/AuthLayout';
 import CalendarIndex from './Pages/Calendar/Index';
-import Profile from './Pages/Profile';
+import Settings from './Pages/UserSetting/UserSetting';
 import Eisenhower from './Pages/Eisenhower/Eisenhower';
 import TimeFocus from './Pages/TimeFocus/TimeFocus';
 import AppLayout from './Layouts/AppLayout';  // THÊM DÒNG NÀY
@@ -51,9 +51,9 @@ function App() {
         />
 
         <Route path="/calendar" element={<CalendarIndex />} />
-        <Route path="/profile" element={<Profile />} />
         <Route path="/eisenhower" element={<AppLayout><Eisenhower /></AppLayout>} />
         <Route path="/timefocus" element={<AppLayout><TimeFocus /></AppLayout>} />
+        <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
 
       </Routes>
     </Router>
