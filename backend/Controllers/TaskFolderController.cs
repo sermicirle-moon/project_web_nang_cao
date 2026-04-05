@@ -6,9 +6,9 @@ using System.Security.Claims;
 
 namespace backend.Controllers
 {
-    [Route("api/[controller]")] // Tương đương: /api/taskfolders
+    [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Bắt buộc đăng nhập
+    [Authorize]
     public class TaskFoldersController : ControllerBase
     {
         private readonly ITaskListService _taskListService;
