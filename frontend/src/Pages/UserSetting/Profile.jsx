@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // 1. ĐÃ THÊM: Import công cụ chuyển trang
 import api from "../../api";
 
 export default function Profile() {
+  const navigate = useNavigate(); // 2. ĐÃ THÊM: Khởi tạo vô lăng điều hướng
+
   // ==========================================
   // 1. STATE & LẤY DỮ LIỆU TỪ BACKEND (GET)
   // ==========================================
@@ -17,7 +20,6 @@ export default function Profile() {
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
 
-  // Gọi API lấy dữ liệu ngay khi mở trang
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -26,10 +28,7 @@ export default function Profile() {
           name: response.data.name || "Chưa cập nhật",
           email: response.data.email,
           phoneNumber: response.data.phoneNumber || "Chưa cập nhật",
-          
-          // ĐÃ SỬA Ở ĐÂY: Lấy bio thực tế từ Backend, không fix cứng chữ nữa
           bio: response.data.bio || "Hãy thêm vài dòng giới thiệu về bản thân bạn...", 
-          
           role: response.data.role,
           avatarUrl: response.data.avatarUrl || null
         });
@@ -54,20 +53,14 @@ export default function Profile() {
   };
 
   const handleSave = async () => {
-    // 1. Tạo bản sao dữ liệu mới
     const updatedData = { ...profileData, [editingField]: editValue };
-
-    // 2. Cập nhật giao diện ngay lập tức cho mượt (Optimistic UI)
     setProfileData(updatedData);
     setEditingField(null);
 
-    // 3. Gửi dữ liệu lên C# để lưu vào Database
     try {
       await api.put('/user/profile', {
         name: updatedData.name,
         phoneNumber: updatedData.phoneNumber,
-        
-        // ĐÃ SỬA Ở ĐÂY: Bổ sung thêm biến bio để gửi lên cho C# hứng
         bio: updatedData.bio 
       });
     } catch (error) {
@@ -188,15 +181,22 @@ export default function Profile() {
             <EditableField label="Mô tả bản thân" fieldKey="bio" value={profileData.bio} icon="description" isTextArea={true} />
           </div>
 
-          <div className="bg-gradient-to-r from-[#cbf5eb] to-[#a0f0fa] rounded-[32px] p-6 flex justify-between items-center shadow-sm">
-             <div>
-                <h3 className="font-bold text-[#006054] text-lg">Nâng cấp trải nghiệm?</h3>
-                <p className="text-sm text-[#006054] opacity-80">Mở khóa bảng điều khiển không giới hạn.</p>
-             </div>
-             <button className="bg-white text-[#006054] px-6 py-2 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-colors">
-                Xem gói Pro
-             </button>
-          </div>
+          {/* 3. ĐÃ SỬA: CHỈ HIỂN THỊ BANNER NÀY NẾU ROLE KHÁC "Premium" */}
+          {profileData.role !== 'Premium' && (
+            <div className="bg-gradient-to-r from-[#cbf5eb] to-[#a0f0fa] rounded-[32px] p-6 flex justify-between items-center shadow-sm">
+               <div>
+                  <h3 className="font-bold text-[#006054] text-lg">Nâng cấp trải nghiệm?</h3>
+                  <p className="text-sm text-[#006054] opacity-80">Mở khóa bảng điều khiển không giới hạn.</p>
+               </div>
+               <button 
+                  onClick={() => navigate('/pricing')} // ĐÃ THÊM: Dẫn tới trang Pricing
+                  className="bg-white text-[#006054] px-6 py-2 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-colors"
+               >
+                  Xem gói Pro
+               </button>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

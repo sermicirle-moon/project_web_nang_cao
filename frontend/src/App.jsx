@@ -9,16 +9,15 @@ import CalendarIndex from './Pages/Calendar/Index';
 import Settings from './Pages/UserSetting/UserSetting';
 import Eisenhower from './Pages/Eisenhower/Eisenhower';
 import TimeFocus from './Pages/TimeFocus/TimeFocus';
-import AppLayout from './Layouts/AppLayout';  // THÊM DÒNG NÀY
-
+import AppLayout from './Layouts/AppLayout'; 
+import PricingPage from './Pages/Pricing/Pricing';
+import Checkout from './Pages/Pricing/Checkout';
+import ProtectedRoute from './Components/ProtectedRoute';
 
 function App() {
   return (
     <Router>
       <Routes>
-        
-        {/* 1. Trang chủ (Landing Page) */}
-        {/* Đã bỏ thẻ <> </> thừa. Element nhận trực tiếp MainLayout */}
         <Route 
           path="/" 
           element={
@@ -27,12 +26,7 @@ function App() {
             </MainLayout>
           } 
         />
-        {/* 3. Trang Quản lý công việc (Khi ấn vào chữ Features) */}
-        {/* URL là /features, toàn bộ giao diện nằm gọn trong Index */}
-        <Route path="/features" element={<Index />} />
         
-        {/* Trang Login & Register: Thường không cần Navbar của Landing Page 
-            nên chúng ta để riêng biệt hoặc bọc trong một AuthLayout khác */}
         <Route 
           path="/login" 
           element={
@@ -41,6 +35,7 @@ function App() {
             </AuthLayout>
           } 
         />
+        
         <Route 
           path="/register" 
           element={
@@ -50,10 +45,78 @@ function App() {
           } 
         />
 
-        <Route path="/calendar" element={<CalendarIndex />} />
-        <Route path="/eisenhower" element={<AppLayout><Eisenhower /></AppLayout>} />
-        <Route path="/timefocus" element={<AppLayout><TimeFocus /></AppLayout>} />
-        <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
+        <Route 
+          path="/features" 
+          element={
+            <ProtectedRoute>
+              <Index />
+            </ProtectedRoute>
+          } 
+        />
+        
+        <Route 
+          path="/calendar" 
+          element={
+            <ProtectedRoute>
+              <CalendarIndex />
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/eisenhower" 
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Eisenhower />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/timefocus" 
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <TimeFocus />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <Settings />
+              </AppLayout>
+            </ProtectedRoute>
+          } 
+        />
+
+        <Route 
+          path='/pricing'
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <PricingPage />
+              </MainLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route 
+          path="/checkout" 
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <Checkout />
+              </MainLayout>
+            </ProtectedRoute>
+          } 
+        />
 
       </Routes>
     </Router>

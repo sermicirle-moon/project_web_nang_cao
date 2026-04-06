@@ -1,4 +1,10 @@
+import { useAuth } from "../../context/AuthContext";
+import { Link } from "react-router-dom";
+import LandingPage from "../LandingPage/LandingPage";
+
 export default function Sidebar({ activeTab, setActiveTab }) {
+  const { logout } = useAuth();
+
   const getButtonClass = (id) => {
     const isActive = activeTab === id;
     return `w-full flex items-center gap-3 px-4 py-3 rounded-full font-bold transition-all ${
@@ -33,29 +39,16 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           <span className="material-symbols-outlined text-[22px]">lock</span> Password
         </button>
 
-        <button onClick={() => setActiveTab('premium')} className={getButtonClass('premium')}>
-          <span className="material-symbols-outlined text-[22px]">workspace_premium</span> Premium
-        </button>
       </nav>
 
-      {/* 3. PHẦN CUỐI: KHUNG QUẢNG CÁO & NÚT LOGOUT */}
+      {/* 3. NÚT LOGOUT */}
       <div className="pb-8 space-y-4 mt-8">
-        
-        {/* Banner quảng cáo Pro Plan */}
-        <div className="bg-[#bdf3e8] p-5 rounded-2xl relative overflow-hidden">
-          <h4 className="font-bold text-gray-800 mb-1 text-sm">Pro Plan Available</h4>
-          <p className="text-[11px] text-gray-600 mb-4 leading-relaxed">
-            Unlock advanced productivity bento grids and custom themes.
-          </p>
-          <button className="w-full bg-[#006054] text-white font-bold py-2 rounded-xl text-sm shadow-md hover:bg-[#004f44] transition-colors">
-            Upgrade Now
-          </button>
-        </div>
 
         {/* Nút Đăng xuất */}
-        <button className="w-full flex items-center gap-3 px-4 py-2 text-gray-500 hover:text-red-600 transition-colors font-bold">
+        <Link to="/" onClick={logout}
+          className="w-full flex items-center gap-3 px-4 py-2 text-gray-500 hover:text-red-600 transition-colors font-bold">
           <span className="material-symbols-outlined">logout</span> Logout
-        </button>
+        </Link>
       </div>
 
     </aside>

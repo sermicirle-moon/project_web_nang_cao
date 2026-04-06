@@ -17,8 +17,6 @@ export default function Settings() {
       {/* 2. Vùng màn hình chính */}
       <main className="flex-1 p-10">
         
-        {/* Lệnh rẽ nhánh (Conditional Rendering): 
-            Nếu activeTab là 'profile' thì render thẻ <Profile />, v.v... */}
         {activeTab === 'profile' && <Profile />}
         
         {activeTab === 'password' && <ChangePass />}
