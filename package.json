@@ -3,7 +3,8 @@
     "@fullcalendar/daygrid": "^6.1.20",
     "@fullcalendar/interaction": "^6.1.20",
     "@fullcalendar/react": "^6.1.20",
-    "@fullcalendar/timegrid": "^6.1.20"
+    "@fullcalendar/timegrid": "^6.1.20",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "vite": "^8.0.3"
