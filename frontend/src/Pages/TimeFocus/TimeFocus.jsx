@@ -8,15 +8,22 @@ export default function TimeFocus() {
   const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [sessionType, setSessionType] = useState("focus");
-
   const [activeSessionId, setActiveSessionId] = useState(null);
+
+  // --- REFS ĐỂ TRÁNH STALE CLOSURE & TRACKING ---
   const intervalRef = useRef(null);
   const sessionTypeRef = useRef(sessionType);
-  
-  // Lưu thời điểm bắt đầu focus (chỉ dùng cho focus)
-  const sessionStartTimeRef = useRef(null);
-  // Lưu thời gian còn lại khi pause (để resume tính đúng)
+  const activeSessionIdRef = useRef(null); // Ref để dùng trong Cleanup (fix lỗi state bị cũ)
   const remainingOnPauseRef = useRef(0);
+  
+  // Tracking Focus Time
+  const sessionStartTimeRef = useRef(null); // Mốc bắt đầu của TỪNG ĐOẠN chạy
+  const accumulatedFocusTimeRef = useRef(0); // Tổng thời gian focus đã cộng dồn qua các lần pause
+
+  // Tracking Pause Time (Bổ sung cho API giống TickTick)
+  const pauseStartTimeRef = useRef(null);
+  const accumulatedPauseTimeRef = useRef(0);
+  const pauseCountRef = useRef(0);
 
   const durations = {
     focus: 25 * 60,
@@ -28,154 +35,197 @@ export default function TimeFocus() {
     sessionTypeRef.current = sessionType;
   }, [sessionType]);
 
+  // Hàm Helper để cập nhật cả State và Ref cho Session ID
+  const updateSessionId = (id) => {
+    setActiveSessionId(id);
+    activeSessionIdRef.current = id;
+  };
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-// ==================== API CALLS ====================
-const startSessionOnServer = async (type) => {
-  try {
-    const res = await api.post("/focus/start", {
-      taskId: null,
-      sessionType: type,  // gửi đúng loại: "focus", "shortBreak", "longBreak"
-    });
-    setActiveSessionId(res.data.sessionId);
-    return res.data.sessionId;
-  } catch (err) {
-    console.error("Lỗi start session:", err);
-    return null;
-  }
-};
-
-const endSessionOnServer = async (sessionId, finalDurationSeconds, isCompleted = true) => {
-  if (!sessionId) return;
-  try {
-    await api.put("/focus/end", {
-      sessionId: sessionId,
-      finalDurationSeconds: finalDurationSeconds,
-      totalPauseSeconds: 0,
-      pauseCount: 0,
-      isCompleted: isCompleted,
-    });
-    console.log(`✅ Session ${sessionId} (${sessionTypeRef.current}) ended: ${finalDurationSeconds}s, completed=${isCompleted}`);
-  } catch (err) {
-    console.error("Lỗi end session:", err);
-  }
-};
-
-// Timer logic
-const startTimer = async () => {
-  if (intervalRef.current) return;
-
-  // Tạo session cho MỌI LOẠI (focus, shortBreak, longBreak) nếu chưa có
-  if (!activeSessionId) {
-    const sessionId = await startSessionOnServer(sessionTypeRef.current);
-    if (!sessionId) return;
-    sessionStartTimeRef.current = Date.now();
-  } else if (activeSessionId && !sessionStartTimeRef.current) {
-    // Resume sau pause
-    sessionStartTimeRef.current = Date.now();
-  }
-
-  setIsRunning(true);
-  const startTime = Date.now();
-  let remaining = timeLeft;
-
-  intervalRef.current = setInterval(() => {
-    const elapsed = Math.floor((Date.now() - startTime) / 1000);
-    const newRemaining = Math.max(0, remaining - elapsed);
-    setTimeLeft(newRemaining);
-
-    if (newRemaining === 0) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      setIsRunning(false);
-
-      if (activeSessionId && sessionStartTimeRef.current) {
-        const elapsedDuration = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
-        endSessionOnServer(activeSessionId, elapsedDuration, true);
-        setActiveSessionId(null);
-        sessionStartTimeRef.current = null;
-      }
+  // Helper tính TỔNG thời gian focus thực tế (Bao gồm cả cộng dồn + đoạn đang chạy)
+  const getTotalFocusDuration = () => {
+    let total = accumulatedFocusTimeRef.current;
+    if (sessionStartTimeRef.current) {
+      total += Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
     }
-  }, 1000);
-};
+    return total;
+  };
 
-const pauseTimer = () => {
-  if (!isRunning) return;
-  if (intervalRef.current) {
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  }
-  setIsRunning(false);
-  remainingOnPauseRef.current = timeLeft;
-  // Không reset sessionStartTimeRef
-};
-
-const resumeTimer = async () => {
-  if (isRunning) return;
-  setTimeLeft(remainingOnPauseRef.current);
-  remainingOnPauseRef.current = 0;
-  // Ghi nhận lại thời điểm resume để tính chính xác
-  sessionStartTimeRef.current = Date.now();
-  startTimer();
-};
-
-const resetTimer = async () => {
-  // Lưu session hiện tại (nếu có) với thời gian thực tế
-  if (activeSessionId && sessionStartTimeRef.current) {
-    const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
-    await endSessionOnServer(activeSessionId, elapsed, false);
-    console.log(`🔄 Reset: saved ${elapsed}s for ${sessionTypeRef.current}`);
-    setActiveSessionId(null);
-    sessionStartTimeRef.current = null;
-  } else if (activeSessionId) {
-    await endSessionOnServer(activeSessionId, 0, false);
-    setActiveSessionId(null);
-  }
-
-  if (intervalRef.current) {
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  }
-  setIsRunning(false);
-  setSessionType("focus");
-  setTimeLeft(durations.focus);
-  remainingOnPauseRef.current = 0;
-};
-
-const changeSession = async (type) => {
-  if (type === sessionType) return;
-  // Lưu session hiện tại (nếu có)
-  if (activeSessionId && sessionStartTimeRef.current) {
-    const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
-    await endSessionOnServer(activeSessionId, elapsed, false);
-    setActiveSessionId(null);
-    sessionStartTimeRef.current = null;
-  }
-  if (intervalRef.current) {
-    clearInterval(intervalRef.current);
-    intervalRef.current = null;
-  }
-  setIsRunning(false);
-  setSessionType(type);
-  setTimeLeft(durations[type]);
-  remainingOnPauseRef.current = 0;
-};
-
-// Cleanup khi unmount
-useEffect(() => {
-  return () => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (activeSessionId && sessionStartTimeRef.current) {
-      const elapsed = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
-      endSessionOnServer(activeSessionId, elapsed, false);
+  // ==================== API CALLS ====================
+  const startSessionOnServer = async (type) => {
+    try {
+      const res = await api.post("/focus/start", {
+        taskId: null,
+        sessionType: type,
+      });
+      updateSessionId(res.data.sessionId);
+      return res.data.sessionId;
+    } catch (err) {
+      console.error("Lỗi start session:", err);
+      return null;
     }
   };
-}, []);
 
+  const endSessionOnServer = async (sessionId, finalDurationSeconds, isCompleted = true) => {
+    if (!sessionId) return;
+    try {
+      await api.put("/focus/end", {
+        sessionId: sessionId,
+        finalDurationSeconds: finalDurationSeconds,
+        totalPauseSeconds: accumulatedPauseTimeRef.current, // Gửi lên số liệu Pause thật
+        pauseCount: pauseCountRef.current,                  // Gửi lên số lần Pause
+        isCompleted: isCompleted,
+      });
+      console.log(`✅ Session ${sessionId} (${sessionTypeRef.current}) ended: ${finalDurationSeconds}s, Pauses: ${pauseCountRef.current}, completed=${isCompleted}`);
+    } catch (err) {
+      console.error("Lỗi end session:", err);
+    }
+  };
+
+  // ==================== TIMER LOGIC ====================
+  const startTimer = async () => {
+    if (intervalRef.current) return;
+
+    // 1. Tạo session mới nếu chưa có
+    if (!activeSessionIdRef.current) {
+      const sessionId = await startSessionOnServer(sessionTypeRef.current);
+      if (!sessionId) return;
+      
+      // Reset toàn bộ bộ đếm cho Session mới
+      accumulatedFocusTimeRef.current = 0;
+      accumulatedPauseTimeRef.current = 0;
+      pauseCountRef.current = 0;
+    } 
+
+    // 2. Xử lý logic nếu vừa Resume từ Pause
+    if (pauseStartTimeRef.current) {
+      const pauseDuration = Math.floor((Date.now() - pauseStartTimeRef.current) / 1000);
+      accumulatedPauseTimeRef.current += pauseDuration;
+      pauseStartTimeRef.current = null;
+    }
+
+    // 3. Bắt đầu đếm (Bất kể là Start mới hay Resume)
+    setIsRunning(true);
+    sessionStartTimeRef.current = Date.now(); // Chốt mốc bắt đầu của đoạn chạy này
+    const startTime = Date.now();
+    let remaining = timeLeft;
+
+    intervalRef.current = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const newRemaining = Math.max(0, remaining - elapsed);
+      setTimeLeft(newRemaining);
+
+      // Khi Timer chạy hết (Hoàn thành)
+      if (newRemaining === 0) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+        setIsRunning(false);
+
+        if (activeSessionIdRef.current) {
+          const finalDuration = getTotalFocusDuration();
+          endSessionOnServer(activeSessionIdRef.current, finalDuration, true);
+          
+          // Dọn dẹp
+          updateSessionId(null);
+          sessionStartTimeRef.current = null;
+        }
+      }
+    }, 1000);
+  };
+
+  const pauseTimer = () => {
+    if (!isRunning) return;
+    
+    // Dừng đếm ngược
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setIsRunning(false);
+    remainingOnPauseRef.current = timeLeft;
+
+    // 1. Chốt thời gian Focus của đoạn vừa chạy và cộng dồn lại
+    if (sessionStartTimeRef.current) {
+      const elapsedThisSegment = Math.floor((Date.now() - sessionStartTimeRef.current) / 1000);
+      accumulatedFocusTimeRef.current += elapsedThisSegment;
+      sessionStartTimeRef.current = null; // Đánh dấu là không còn đoạn nào đang chạy
+    }
+
+    // 2. Bắt đầu đếm thời gian Pause
+    pauseCountRef.current += 1;
+    pauseStartTimeRef.current = Date.now();
+  };
+
+  const resumeTimer = async () => {
+    if (isRunning) return;
+    setTimeLeft(remainingOnPauseRef.current);
+    remainingOnPauseRef.current = 0;
+    
+    // startTimer đã bao gồm logic cập nhật lại mốc sessionStartTimeRef mới
+    startTimer();
+  };
+
+  const resetTimer = async () => {
+    if (activeSessionIdRef.current) {
+      // Lấy toàn bộ tổng thời gian thực tế đã chạy
+      const finalDuration = getTotalFocusDuration();
+      await endSessionOnServer(activeSessionIdRef.current, finalDuration, false);
+      
+      updateSessionId(null);
+      sessionStartTimeRef.current = null;
+    }
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    setIsRunning(false);
+    setSessionType("focus");
+    setTimeLeft(durations.focus);
+    remainingOnPauseRef.current = 0;
+    pauseStartTimeRef.current = null;
+  };
+
+  const changeSession = async (type) => {
+    if (type === sessionType) return;
+    
+    if (activeSessionIdRef.current) {
+      const finalDuration = getTotalFocusDuration();
+      await endSessionOnServer(activeSessionIdRef.current, finalDuration, false);
+      updateSessionId(null);
+      sessionStartTimeRef.current = null;
+    }
+
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    setIsRunning(false);
+    setSessionType(type);
+    setTimeLeft(durations[type]);
+    remainingOnPauseRef.current = 0;
+    pauseStartTimeRef.current = null;
+  };
+
+  // Cleanup khi user chuyển trang đột ngột
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      
+      // Sử dụng activeSessionIdRef.current thay vì activeSessionId để tránh lỗi state cũ
+      if (activeSessionIdRef.current) {
+        const finalDuration = getTotalFocusDuration();
+        endSessionOnServer(activeSessionIdRef.current, finalDuration, false);
+      }
+    };
+  }, []);
   // UI giữ nguyên (không thay đổi)
   return (
     <div className="p-6 h-full overflow-y-auto">
@@ -217,10 +267,10 @@ useEffect(() => {
             <div className="bg-white rounded-2xl shadow-md p-6 text-center">
               <h3 className="font-semibold text-lg text-gray-700 mb-2">
                 {sessionType === "focus"
-                  ? "Deep Work"
+                  ? "Focus Timer"
                   : sessionType === "shortBreak"
-                  ? "Short Break"
-                  : "Long Break"}
+                  ? "Short Break Timer"
+                  : "Long Break Timer"}
               </h3>
               <div className="text-6xl font-mono font-bold my-4">{formatTime(timeLeft)}</div>
               <div className="flex justify-center gap-3">
