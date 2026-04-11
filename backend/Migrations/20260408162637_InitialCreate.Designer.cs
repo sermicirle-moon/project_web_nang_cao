@@ -12,7 +12,7 @@ using backend.Data;
 namespace backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260407152949_InitialCreate")]
+    [Migration("20260408162637_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -297,6 +297,62 @@ namespace backend.Migrations
                     b.ToTable("Attachments");
                 });
 
+            modelBuilder.Entity("backend.Models.FocusSession", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("DurationSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("PauseCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SessionType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("StartTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("TaskId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalPauseSeconds")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("UpdateAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StartTime");
+
+                    b.HasIndex("TaskId");
+
+                    b.HasIndex("UserId", "StartTime");
+
+                    b.ToTable("FocusSessions", (string)null);
+                });
+
             modelBuilder.Entity("backend.Models.Tag", b =>
                 {
                     b.Property<int>("Id")
@@ -565,6 +621,24 @@ namespace backend.Migrations
                         .IsRequired();
 
                     b.Navigation("TaskItem");
+                });
+
+            modelBuilder.Entity("backend.Models.FocusSession", b =>
+                {
+                    b.HasOne("backend.Models.TaskItem", "Task")
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("backend.Models.ApplicationUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Task");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("backend.Models.Tag", b =>

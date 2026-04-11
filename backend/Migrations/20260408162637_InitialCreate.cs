@@ -322,6 +322,42 @@ namespace backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FocusSessions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    UserId = table.Column<string>(type: "nvarchar(450)", nullable: false),
+                    TaskId = table.Column<int>(type: "int", nullable: true),
+                    StartTime = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    EndTime = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DurationSeconds = table.Column<int>(type: "int", nullable: false),
+                    PauseCount = table.Column<int>(type: "int", nullable: false),
+                    TotalPauseSeconds = table.Column<int>(type: "int", nullable: false),
+                    SessionType = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsCompleted = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    UpdateAt = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FocusSessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FocusSessions_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FocusSessions_TaskItems_TaskId",
+                        column: x => x.TaskId,
+                        principalTable: "TaskItems",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "TaskTags",
                 columns: table => new
                 {
@@ -387,6 +423,21 @@ namespace backend.Migrations
                 name: "IX_Attachments_TaskItemId",
                 table: "Attachments",
                 column: "TaskItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FocusSessions_StartTime",
+                table: "FocusSessions",
+                column: "StartTime");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FocusSessions_TaskId",
+                table: "FocusSessions",
+                column: "TaskId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FocusSessions_UserId_StartTime",
+                table: "FocusSessions",
+                columns: new[] { "UserId", "StartTime" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Tags_UserId",
@@ -459,6 +510,9 @@ namespace backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "Attachments");
+
+            migrationBuilder.DropTable(
+                name: "FocusSessions");
 
             migrationBuilder.DropTable(
                 name: "TaskTags");

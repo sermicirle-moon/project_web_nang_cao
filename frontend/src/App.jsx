@@ -13,6 +13,7 @@ import AppLayout from './Layouts/AppLayout';
 import PricingPage from './Pages/Pricing/Pricing';
 import Checkout from './Pages/Pricing/Checkout';
 import ProtectedRoute from './Components/ProtectedRoute';
+import FocusStats from "./Pages/FocusStats";
 
 function App() {
   return (
@@ -117,9 +118,20 @@ function App() {
             </ProtectedRoute>
           } 
         />
+        <Route 
+        path="/focus-stats" 
+        element={
+        <ProtectedRoute>
+          <AppLayout>
+            <FocusStats />
+            </AppLayout>
+            </ProtectedRoute>
+          } 
+          />
 
       </Routes>
     </Router>
+    
   );
 }
 
