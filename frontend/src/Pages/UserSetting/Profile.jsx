@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom"; // 1. ĐÃ THÊM: Import công cụ chuyển trang
-import api from "../../api";
+import api from "../../api/api";
 
 export default function Profile() {
   const navigate = useNavigate(); // 2. ĐÃ THÊM: Khởi tạo vô lăng điều hướng

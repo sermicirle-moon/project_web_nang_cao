@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom"; // ĐÃ THÊM useLocation
-import api from "../../api"; 
+import api from "../../api/api"; 
 
 export default function Checkout() {
   const navigate = useNavigate();

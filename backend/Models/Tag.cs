@@ -9,5 +9,6 @@
         public string UserId { get; set; } = string.Empty;
         public ApplicationUser User { get; set; } = null!;
         public ICollection<TaskItem> Tasks { get;set; } = new List<TaskItem>();
+        public string Slug { get; set; } = string.Empty;
     }
 }
