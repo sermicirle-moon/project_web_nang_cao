@@ -1,4 +1,6 @@
-﻿namespace backend.Models.DTO.Tasks
+﻿using backend.Models.DTO.Tag;
+
+namespace backend.Models.DTO.Tasks
 {
     public class TaskItemDetailDto
     {

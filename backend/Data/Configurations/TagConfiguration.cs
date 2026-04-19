@@ -11,6 +11,9 @@ namespace backend.Data.Configurations
         {
             builder.Property(t => t.Name).IsRequired().HasMaxLength(50);
             builder.Property(t => t.Color).HasMaxLength(50);
+            builder.Property(t => t.Icon).HasMaxLength(50);
+            builder.Property(t => t.Description).HasMaxLength(200);
+            builder.Property(t => t.Slug).IsRequired().HasMaxLength(100);
 
             builder.HasOne(t => t.User)
                    .WithMany()
