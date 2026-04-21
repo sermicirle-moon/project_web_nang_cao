@@ -30,7 +30,8 @@ builder.Services.Configure<IdentityOptions>(options =>
 });
 
 builder.Services.AddScoped<ITaskListService, TaskListService>();
-
+builder.Services.AddScoped<IEisenhowerTaskService, EisenhowerTaskService>();
+builder.Services.AddScoped<IHabitService, HabitService>();
 // --- 1. THÊM CORS (Để React ở cổng 5173 gọi được API) ---
 builder.Services.AddCors(options =>
 {

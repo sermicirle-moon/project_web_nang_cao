@@ -81,7 +81,7 @@ function Login() {
                 htmlFor="login-username" 
                 className="block font-body font-medium text-on-surface mb-2"
               >
-                EMAIL ADDRESS
+                USERNAME
               </label>
               <input
                 id="login-username"

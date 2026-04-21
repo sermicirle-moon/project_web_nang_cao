@@ -16,6 +16,9 @@ namespace backend.Data
         public DbSet<Tag> Tags { get; set; }
         public DbSet<FocusSession> FocusSessions { get; set; }
         public DbSet<TaskFolder> TaskFolders { get; set; }
+        public DbSet<Habit> Habits { get; set; }
+        public DbSet<HabitLog> HabitLogs { get; set; }
+        public DbSet<EisenhowerTask> EisenhowerTasks { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -43,6 +46,14 @@ namespace backend.Data
                 .WithMany()
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<HabitLog>(entity =>{
+                entity.HasKey(e => e.Id);
+                entity.HasOne(e => e.Habit)
+                    .WithMany()
+                    .HasForeignKey(e => e.HabitId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                entity.HasIndex(e => new { e.HabitId, e.Date }).IsUnique();
+            });
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
