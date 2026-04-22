@@ -99,13 +99,13 @@ namespace backend.Services
 
                 case "today":
                     // HÔM NAY: Gom TẤT CẢ task có hạn là hôm nay (Bất kể từ Inbox hay từ các List tự tạo)
-                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date == today);
+                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date <= today);
                     break;
 
                 case "next7days":
                     // 7 NGÀY TỚI: Gom TẤT CẢ task từ ngày mai đến 7 ngày sau (View chéo toàn hệ thống)
                     var week = today.AddDays(7);
-                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date <= week);
+                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date <= week);
                     break;
 
                 case "completed":
