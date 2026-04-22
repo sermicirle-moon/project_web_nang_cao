@@ -1,13 +1,14 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // 1. ĐÃ THÊM: Import công cụ chuyển trang
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../api/api";
+import { userService } from "../../api/userService";
+import { useAuth } from '../../context/AuthContext'; // 👈 THÊM
 
 export default function Profile() {
-  const navigate = useNavigate(); // 2. ĐÃ THÊM: Khởi tạo vô lăng điều hướng
+  const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+  const { updateUser } = useAuth(); // 👈 THÊM
 
-  // ==========================================
-  // 1. STATE & LẤY DỮ LIỆU TỪ BACKEND (GET)
-  // ==========================================
   const [profileData, setProfileData] = useState({
     name: "Đang tải...",
     email: "Đang tải...",
@@ -16,33 +17,56 @@ export default function Profile() {
     bio: "...",
     avatarUrl: null
   });
-
+  const [uploading, setUploading] = useState(false);
   const [editingField, setEditingField] = useState(null);
   const [editValue, setEditValue] = useState("");
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await api.get('/user/profile');
-        setProfileData({
-          name: response.data.name || "Chưa cập nhật",
-          email: response.data.email,
-          phoneNumber: response.data.phoneNumber || "Chưa cập nhật",
-          bio: response.data.bio || "Hãy thêm vài dòng giới thiệu về bản thân bạn...", 
-          role: response.data.role,
-          avatarUrl: response.data.avatarUrl || null
-        });
-      } catch (error) {
-        console.error("Lỗi lấy thông tin:", error);
-      }
-    };
-
     fetchProfile();
   }, []);
 
-  // ==========================================
-  // 2. CÁC HÀM XỬ LÝ CHỈNH SỬA & LƯU LÊN BACKEND (PUT)
-  // ==========================================
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/user/profile');
+      setProfileData({
+        name: response.data.name || "Chưa cập nhật",
+        email: response.data.email,
+        phoneNumber: response.data.phoneNumber || "Chưa cập nhật",
+        bio: response.data.bio || "Hãy thêm vài dòng giới thiệu về bản thân bạn...",
+        role: response.data.role,
+        avatarUrl: response.data.avatarUrl || null
+      });
+    } catch (error) {
+      console.error("Lỗi lấy thông tin:", error);
+    }
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Vui lòng chọn file ảnh (jpg, png, ...)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const res = await userService.uploadAvatar(file);
+      const newAvatarUrl = res.data.avatarUrl;
+      setProfileData(prev => ({ ...prev, avatarUrl: newAvatarUrl }));
+      updateUser({ avatarUrl: newAvatarUrl }); // 👈 CẬP NHẬT CONTEXT
+      await fetchProfile();
+    } catch (error) {
+      alert('Upload ảnh thất bại. Vui lòng thử lại.');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const startEditing = (field, currentValue) => {
     setEditingField(field);
     setEditValue(currentValue || "");
@@ -56,28 +80,27 @@ export default function Profile() {
     const updatedData = { ...profileData, [editingField]: editValue };
     setProfileData(updatedData);
     setEditingField(null);
-
     try {
       await api.put('/user/profile', {
         name: updatedData.name,
         phoneNumber: updatedData.phoneNumber,
-        bio: updatedData.bio 
+        bio: updatedData.bio
       });
+      // 👈 NẾU SỬA TÊN, CẬP NHẬT CONTEXT
+      if (editingField === 'name') {
+        updateUser({ fullName: updatedData.name });
+      }
     } catch (error) {
       alert("Lỗi không thể lưu lên Server. Vui lòng thử lại!");
+      fetchProfile();
     }
   };
 
-  // ==========================================
-  // 3. COMPONENT CON: Ô NHẬP LIỆU THÔNG MINH
-  // ==========================================
   const EditableField = ({ label, fieldKey, value, icon, isTextArea = false }) => {
     const isEditing = editingField === fieldKey;
-
     return (
       <div className="mb-6">
         <label className="block text-sm font-bold text-gray-700 mb-2">{label}</label>
-        
         {isEditing ? (
           <div className="flex flex-col gap-2 animate-fade-in">
             {isTextArea ? (
@@ -95,8 +118,8 @@ export default function Profile() {
               />
             )}
             <div className="flex justify-end gap-2 mt-1">
-              <button onClick={handleCancel} className="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100 transition-colors">Hủy</button>
-              <button onClick={handleSave} className="px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-500 text-white shadow-md hover:bg-emerald-600 transition-colors">Lưu</button>
+              <button onClick={handleCancel} className="px-4 py-1.5 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100">Hủy</button>
+              <button onClick={handleSave} className="px-4 py-1.5 rounded-lg text-sm font-bold bg-emerald-500 text-white shadow-md hover:bg-emerald-600">Lưu</button>
             </div>
           </div>
         ) : (
@@ -108,7 +131,6 @@ export default function Profile() {
             <button 
               onClick={() => startEditing(fieldKey, value)}
               className="absolute right-2 top-2 text-emerald-600 opacity-0 group-hover:opacity-100 bg-white shadow-sm p-1.5 rounded-lg transition-all hover:bg-emerald-50"
-              title="Chỉnh sửa"
             >
               <span className="material-symbols-outlined text-[18px]">edit</span>
             </button>
@@ -118,9 +140,6 @@ export default function Profile() {
     );
   };
 
-  // ==========================================
-  // 4. GIAO DIỆN CHÍNH
-  // ==========================================
   return (
     <div className="max-w-5xl mx-auto h-full flex flex-col">
       <div className="flex items-center justify-between mb-8">
@@ -136,9 +155,9 @@ export default function Profile() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-10">
-        {/* CỘT TRÁI: AVATAR & THÔNG TIN CHUNG */}
+        {/* Cột trái: AVATAR */}
         <div className="md:col-span-1 bg-white rounded-[32px] p-8 shadow-sm flex flex-col items-center text-center h-fit border border-gray-50">
-          <div className="relative mb-6 group">
+          <div className="relative mb-6 group cursor-pointer" onClick={handleAvatarClick}>
             <div className="w-32 h-32 rounded-full border-4 border-emerald-400 p-1">
               {profileData.avatarUrl ? (
                 <img src={profileData.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
@@ -148,10 +167,22 @@ export default function Profile() {
                 </div>
               )}
             </div>
-            <button className="absolute bottom-1 right-1 w-9 h-9 bg-[#006054] text-white rounded-full flex items-center justify-center border-2 border-white shadow-md hover:bg-emerald-700 transition-colors">
-                <span className="material-symbols-outlined text-[18px]">photo_camera</span>
-            </button>
+            <div className="absolute bottom-1 right-1 w-9 h-9 bg-[#006054] text-white rounded-full flex items-center justify-center border-2 border-white shadow-md hover:bg-emerald-700 transition-colors">
+              <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+            </div>
+            {uploading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full">
+                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
 
           <h2 className="text-2xl font-extrabold text-gray-800 mb-1">{profileData.name}</h2>
           <p className="text-sm text-gray-500 mb-6">{profileData.email}</p>
@@ -161,12 +192,11 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* CỘT PHẢI: FORM CHỈNH SỬA */}
+        {/* Cột phải: FORM CHỈNH SỬA */}
         <div className="md:col-span-2 space-y-6">
           <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
               <EditableField label="Tên hiển thị" fieldKey="name" value={profileData.name} icon="badge" />
-              
               <div className="mb-6">
                 <label className="block text-sm font-bold text-gray-700 mb-2">Email (Tài khoản)</label>
                 <div className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 flex items-start gap-3 cursor-not-allowed">
@@ -176,12 +206,10 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-
             <EditableField label="Số điện thoại" fieldKey="phoneNumber" value={profileData.phoneNumber} icon="call" />
             <EditableField label="Mô tả bản thân" fieldKey="bio" value={profileData.bio} icon="description" isTextArea={true} />
           </div>
 
-          {/* 3. ĐÃ SỬA: CHỈ HIỂN THỊ BANNER NÀY NẾU ROLE KHÁC "Premium" */}
           {profileData.role !== 'Premium' && (
             <div className="bg-gradient-to-r from-[#cbf5eb] to-[#a0f0fa] rounded-[32px] p-6 flex justify-between items-center shadow-sm">
                <div>
@@ -189,14 +217,13 @@ export default function Profile() {
                   <p className="text-sm text-[#006054] opacity-80">Mở khóa bảng điều khiển không giới hạn.</p>
                </div>
                <button 
-                  onClick={() => navigate('/pricing')} // ĐÃ THÊM: Dẫn tới trang Pricing
+                  onClick={() => navigate('/pricing')}
                   className="bg-white text-[#006054] px-6 py-2 rounded-xl font-bold shadow-sm hover:bg-gray-50 transition-colors"
                >
                   Xem gói Pro
                </button>
             </div>
           )}
-
         </div>
       </div>
     </div>

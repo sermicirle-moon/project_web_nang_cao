@@ -41,6 +41,7 @@ function Login() {
         role: userRole,
         fullName: data.fullName,
         username: username,
+        avatarUrl: data.avatarUrl
       });
       
       setMessage(`Chào mừng ${data.fullName}! Đăng nhập thành công.`);

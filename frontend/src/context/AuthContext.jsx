@@ -13,9 +13,10 @@ export const AuthProvider = ({ children }) => {
     const storedToken = localStorage.getItem('token');
     const fullName = localStorage.getItem('fullName');
     const username = localStorage.getItem('username');
+    const avatarUrl = localStorage.getItem('avatarUrl');
     if (storedToken && fullName) {
       setToken(storedToken);
-      setUser({ fullName, username });
+      setUser({ fullName, username, avatarUrl });
     }
     setLoading(false);
   }, []);
@@ -25,8 +26,9 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('role', userData.role);
     localStorage.setItem('fullName', userData.fullName);
     localStorage.setItem('username', userData.username);
+    if (userData.avatarUrl) localStorage.setItem('avatarUrl', userData.avatarUrl);
     setToken(userData.token);
-    setUser({ fullName: userData.fullName, username: userData.username });
+    setUser({ fullName: userData.fullName, username: userData.username, avatarUrl: userData.avatarUrl });
   };
 
   const logout = () => {
@@ -34,12 +36,20 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('role');
     localStorage.removeItem('fullName');
     localStorage.removeItem('username');
+    localStorage.removeItem('avatarUrl');
     setToken(null);
     setUser(null);
   };
-
+  const updateUser = (updates) => {
+    setUser(prev => {
+      const newUser = { ...prev, ...updates };
+      if (updates.fullName) localStorage.setItem('fullName', updates.fullName);
+      if (updates.avatarUrl) localStorage.setItem('avatarUrl', updates.avatarUrl);
+      return newUser;
+    });
+  };
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, loading, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

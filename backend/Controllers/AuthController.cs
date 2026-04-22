@@ -125,7 +125,8 @@ namespace backend.Controllers
                     token = new JwtSecurityTokenHandler().WriteToken(token),
                     expiration = token.ValidTo,
                     roles = userRoles,
-                    fullName = user.FullName
+                    fullName = user.FullName,
+                    avatarUrl = user.AvatarUrl
                 });
             }
 
