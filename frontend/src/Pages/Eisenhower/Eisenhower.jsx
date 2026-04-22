@@ -82,7 +82,7 @@ export default function Eisenhower() {
         <div>
           <h1 className="text-3xl font-extrabold text-gray-800">Eisenhower Matrix</h1>
           <p className="text-sm text-gray-500">Phân loại công việc theo mức độ khẩn cấp và quan trọng</p>
-        <p>   </p>
+        <br></br>
         </div>
         <div 
           onClick={() => setShowModal(true)}
