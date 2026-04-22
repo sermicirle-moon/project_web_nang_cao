@@ -26,10 +26,10 @@ namespace backend.Services
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
             var isPremium = user.IsInRole("Premium");
 
-            // --- THỰC THI RULE ---
+            // --- 1. THỰC THI CÁC QUY TẮC GÓI CƯỚC (SUBSCRIPTION RULES) ---
             if (!isPremium)
             {
-                // 1. Giới hạn số lượng Task
+                // Giới hạn số lượng Task cho tài khoản Free
                 var currentTaskCount = await _context.TaskItems.CountAsync(t => t.UserId == userId);
                 if (currentTaskCount >= FREE_TASK_LIMIT)
                 {
@@ -39,7 +39,7 @@ namespace backend.Services
                     );
                 }
 
-                // 2. Chặn tính năng tạo Subtask cho người dùng Free
+                // Chặn tính năng tạo Subtask cho tài khoản Free
                 if (dto.ParentTaskId.HasValue)
                 {
                     throw new SubscriptionException(
@@ -49,14 +49,13 @@ namespace backend.Services
                 }
             }
 
-            // --- XỬ LÝ NGHIỆP VỤ CHÍNH ---
+            // --- 2. XỬ LÝ NGHIỆP VỤ CHÍNH ---
+            // Vì tên trường ở CreateTaskItemDto và TaskItem hiện tại đều là DueDate,
+            // AutoMapper sẽ tự động ánh xạ chính xác mà không cần gán tay.
             var taskItem = _mapper.Map<TaskItem>(dto);
             taskItem.UserId = userId!;
 
-            // Đồng bộ cột DueDate từ EndDate (theo Configuration của bạn)
-            taskItem.DueDate = dto.EndDate;
-
-            // Xử lý Tags (Chỉ gán những tag thuộc về User này)
+            // Xử lý Tags (Chỉ gán những tag hợp lệ thuộc sở hữu của người dùng này)
             if (dto.TagIds != null && dto.TagIds.Any())
             {
                 taskItem.Tags = await _context.Tags
@@ -67,17 +66,73 @@ namespace backend.Services
             _context.TaskItems.Add(taskItem);
             await _context.SaveChangesAsync();
 
+            // Trả về DTO chi tiết, lúc này trường DueDate sẽ mang giá trị chuẩn xác cho Frontend.
             return _mapper.Map<TaskItemDetailDto>(taskItem);
         }
 
-        public async Task<IEnumerable<TaskItemSummaryDto>> GetAllSummaryAsync(string userId)
+        public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByListAsync(string userId, int listId)
         {
-            return await _context.TaskItems
-                .Where(t => t.UserId == userId && !t.IsArchived && t.ParentTaskId == null)
+            var tasks = await _context.TaskItems
+                .Where(t => t.UserId == userId &&
+                            t.TaskListId == listId &&
+                            !t.IsArchived &&
+                            !t.IsCompleted &&
+                            t.ParentTaskId == null)
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.DueDate)
-                .ProjectTo<TaskItemSummaryDto>(_mapper.ConfigurationProvider)
                 .ToListAsync();
+
+            return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
+        }
+
+        public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByFilterAsync(string userId, string filterName)
+        {
+            var query = _context.TaskItems.Where(t => t.UserId == userId && !t.IsArchived && t.ParentTaskId == null);
+            var today = DateTime.Today;
+
+            switch (filterName.ToLower())
+            {
+                case "inbox":
+                    // HỘP THƯ ĐẾN: Nơi chứa mặc định cho các task mồ côi (Chưa có List)
+                    query = query.Where(t => t.TaskListId == null);
+                    break;
+
+                case "today":
+                    // HÔM NAY: Gom TẤT CẢ task có hạn là hôm nay (Bất kể từ Inbox hay từ các List tự tạo)
+                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date == today);
+                    break;
+
+                case "next7days":
+                    // 7 NGÀY TỚI: Gom TẤT CẢ task từ ngày mai đến 7 ngày sau (View chéo toàn hệ thống)
+                    var week = today.AddDays(7);
+                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date >= today && t.DueDate.Value.Date <= week);
+                    break;
+
+                case "completed":
+                    // Lấy tất cả task đã tick hoàn thành
+                    query = _context.TaskItems.Where(t => t.UserId == userId && t.IsCompleted && !t.IsArchived && t.ParentTaskId == null);
+                    break;
+
+                case "trash":
+                    // Thùng rác chứa các task đã xóa
+                    query = _context.TaskItems.Where(t => t.UserId == userId && t.IsArchived && t.ParentTaskId == null);
+                    break;
+
+                case "blocked":
+                    query = query.Where(t => false);
+                    break;
+
+                default:
+                    query = query.Where(t => t.TaskListId == null);
+                    break;
+            }
+
+            var tasks = await query
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.DueDate)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
         }
 
         public async Task<TaskItemDetailDto?> GetByIdAsync(int id, string userId)
@@ -110,7 +165,7 @@ namespace backend.Services
 
             // Map dữ liệu mới đè lên dữ liệu cũ
             _mapper.Map(dto, existingTask);
-            existingTask.DueDate = dto.EndDate; // Đồng bộ cấu hình DB
+            existingTask.DueDate = dto.DueDate; // Đồng bộ cấu hình DB
 
             // Cập nhật Tags
             existingTask.Tags.Clear();

@@ -12,7 +12,7 @@ namespace backend.Models.DTO.Tasks
         public string? Description { get; set; }
 
         public DateTime? StartDate { get; set; }
-        public DateTime? EndDate { get; set; }
+        public DateTime? DueDate { get; set; }
 
         public int Priority { get; set; } = 0;
         public bool IsCompleted { get; set; }
