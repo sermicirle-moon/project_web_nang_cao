@@ -14,7 +14,7 @@ import PricingPage from './Pages/Pricing/Pricing';
 import Checkout from './Pages/Pricing/Checkout';
 import ProtectedRoute from './Components/ProtectedRoute';
 import FocusStats from "./Pages/FocusStats";
-
+import HabitsIndex from './Pages/Habits/Index';
 function App() {
   return (
     <Router>
@@ -126,6 +126,14 @@ function App() {
             <FocusStats />
             </AppLayout>
             </ProtectedRoute>
+          } 
+          />
+        <Route path="/habits" element={
+          <ProtectedRoute>
+            <AppLayout>
+              <HabitsIndex />
+            </AppLayout>
+          </ProtectedRoute>
           } 
           />
 
