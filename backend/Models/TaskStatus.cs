@@ -6,6 +6,7 @@ namespace backend.Models
         InProgress = 1,
         Done = 2,
         Cancelled = 3,
-        Snoozed = 4
+        Snoozed = 4,
+        Completed = 5
     }
 }

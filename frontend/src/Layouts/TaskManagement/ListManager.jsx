@@ -5,6 +5,7 @@ import TaskSidebarNavItem from './TaskSidebarNavItem';
 import TaskSidebarListForm from './TaskSidebarListForm';
 import TaskSidebarTagForm from './TaskSidebarTagForm';
 import TaskSidebarTagItem from './TaskSidebarTagItem';
+import { useNavigate } from 'react-router-dom';
 
 const COLOR_OPTIONS = [
   '#f87171',
@@ -17,6 +18,7 @@ const COLOR_OPTIONS = [
 ];
 
 export default function ListManager({ activeListId, onSelectList }) {
+  const navigate = useNavigate(); 
   const [sidebarData, setSidebarData] = useState({ folders: [], standAloneLists: [] });
   const [isLoading, setIsLoading] = useState(true);
   const [activeMenuId, setActiveMenuId] = useState(null);
@@ -240,7 +242,8 @@ export default function ListManager({ activeListId, onSelectList }) {
     }
   };
 
-  const renderNavItem = ({ list, currentFolderName, icon, isDot, color, label, count, showActions }) => {
+  // SỬA Ở ĐÂY: Thêm thuộc tính 'id' vào destructuring
+  const renderNavItem = ({ id, list, currentFolderName, icon, isDot, color, label, count, showActions }) => {
     if (list?.id === editingListId) {
       return (
         <TaskSidebarListForm
@@ -262,9 +265,20 @@ export default function ListManager({ activeListId, onSelectList }) {
       );
     }
 
+    const handleItemClick = (itemInfo) => {
+      // 1. Đổi URL trên trình duyệt
+      navigate(`/features/${itemInfo.id}`);
+      
+      // 2. Vẫn gọi hàm cũ để React cập nhật component ngay lập tức
+      if (onSelectList) {
+        onSelectList(itemInfo);
+      }
+    };
+
     return (
       <TaskSidebarNavItem
-        key={list ? `item-${list.id}` : `item-${label}`}
+        key={list ? `item-${list.id}` : `item-${id || label}`}
+        id={id} // SỬA Ở ĐÂY: Truyền id xuống Component con
         list={list}
         label={label}
         icon={icon}
@@ -274,7 +288,7 @@ export default function ListManager({ activeListId, onSelectList }) {
         activeListId={activeListId}
         activeMenuId={activeMenuId}
         setActiveMenuId={setActiveMenuId}
-        onSelectList={onSelectList}
+        onSelectList={handleItemClick}
         showActions={showActions}
         currentFolderName={currentFolderName}
         onEdit={startEditList}
@@ -288,18 +302,20 @@ export default function ListManager({ activeListId, onSelectList }) {
       <div className="px-3 mb-6">
         <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Bộ lọc thông minh</h3>
         <div className="space-y-1">
-          {renderNavItem({ icon: 'inbox', color: 'text-blue-500', label: 'Hộp thư đến', count: 3 })}
-          {renderNavItem({ icon: 'today', color: 'text-green-500', label: 'Hôm nay', count: 5 })}
-          {renderNavItem({ icon: 'date_range', color: 'text-purple-500', label: '7 Ngày tới', count: 12 })}
+          {/* SỬA Ở ĐÂY: Thêm tham số id chuẩn bằng tiếng Anh */}
+          {renderNavItem({ id: 'inbox', icon: 'inbox', color: 'text-blue-500', label: 'Hộp thư đến' })}
+          {renderNavItem({ id: 'today', icon: 'today', color: 'text-green-500', label: 'Hôm nay' })}
+          {renderNavItem({ id: 'next7days', icon: 'date_range', color: 'text-purple-500', label: '7 Ngày tới' })}
         </div>
       </div>
 
       <div className="px-3 mb-6">
         <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Trạng thái</h3>
         <div className="space-y-1">
-          {renderNavItem({ icon: 'task_alt', color: 'text-teal-500', label: 'Đã hoàn thành', count: 0 })}
-          {renderNavItem({ icon: 'block', color: 'text-orange-400', label: 'Không làm', count: 0 })}
-          {renderNavItem({ icon: 'delete', color: 'text-gray-400', label: 'Thùng rác', count: 0 })}
+          {/* SỬA Ở ĐÂY: Thêm tham số id chuẩn bằng tiếng Anh */}
+          {renderNavItem({ id: 'completed', icon: 'task_alt', color: 'text-teal-500', label: 'Đã hoàn thành', count: 0 })}
+          {renderNavItem({ id: 'blocked', icon: 'block', color: 'text-orange-400', label: 'Không làm', count: 0 })}
+          {renderNavItem({ id: 'trash', icon: 'delete', color: 'text-gray-400', label: 'Thùng rác', count: 0 })}
         </div>
       </div>
 

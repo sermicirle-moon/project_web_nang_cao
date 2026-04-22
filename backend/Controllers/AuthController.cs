@@ -72,7 +72,7 @@ namespace backend.Controllers
 
                 return Ok(new { Message = "Tạo tài khoản thành công!" });
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
                 Console.WriteLine($"LỖI ĐĂNG KÝ (chi tiết): {ex}");
                 return StatusCode(500, new { Message = "Lỗi server: " + ex.Message });

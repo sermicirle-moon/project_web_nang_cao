@@ -47,7 +47,7 @@ function App() {
         />
 
         <Route 
-          path="/features" 
+          path="/features/*" 
           element={
             <ProtectedRoute>
               <Index />

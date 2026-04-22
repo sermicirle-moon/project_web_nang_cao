@@ -1,215 +1,422 @@
-// File: src/Pages/TaskManagement/Body.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useParams, useLocation } from "react-router-dom";
+import { taskService } from "../../api/taskService";
 
-// ĐÃ SỬA: Nhận activeList từ Index truyền xuống
-export default function Body({ activeList }) {
-  const [isInputFocused, setIsInputFocused] = useState(false);
-  const [inputValue, setInputValue] = useState("");
+const FILTER_NAMES = {
+  inbox: 'Hộp thư đến',
+  today: 'Hôm nay',
+  next7days: '7 Ngày tới',
+  completed: 'Đã hoàn thành',
+  blocked: 'Không làm',
+  trash: 'Thùng rác'
+};
 
-  const [tasks, setTasks] = useState([
-    { id: 1, title: "Đọc tài liệu React Router", date: "Hôm nay", priority: "text-red-500", completed: false, description: "Nhớ đọc phần Nested Routes nhé" },
-    { id: 2, title: "Tập thể dục 30 phút", date: "Ngày mai", priority: "text-gray-400", completed: false, description: "" },
-  ]);
+// Hàm lấy tên Thứ viết tắt chuẩn (T2, T3, CN...)
+const getShortWeekday = (date) => {
+  const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+  return days[date.getDay()];
+};
 
-  const [openMenuId, setOpenMenuId] = useState(null);
+// Hàm định dạng ngày chuẩn (VD: T5, 23 Thg 4)
+const formatTickTickHeaderDate = (date) => {
+  return `${getShortWeekday(date)}, ${date.getDate()} Thg ${date.getMonth() + 1}`;
+};
+
+export default function Body() {
+  const { listId } = useParams(); 
+  const location = useLocation();
+
+  const [tasks, setTasks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState(null);
+  const [isInputFocused, setIsInputFocused] = useState(false);
 
-  const selectedTask = tasks.find(t => t.id === selectedTaskId);
+  const listNameDisplay = FILTER_NAMES[listId] || location.state?.name || "Danh sách tác vụ";
+  const isReadOnlyView = ['completed', 'blocked', 'trash'].includes(listId);
+  const isDateView = listId === 'today' || listId === 'next7days';
 
-  // Xử lý công việc
-  const handleAddTask = () => {
-    if (inputValue.trim() === "") return;
-    const newTask = {
-      id: Date.now(),
-      title: inputValue,
-      date: "Hôm nay", 
-      priority: "text-blue-500",
-      completed: false,
-      description: ""
+  const fetchTasks = async () => {
+    if (!listId) return;
+    setTasks([]); 
+    setIsLoading(true);
+    
+    try {
+      const parsedId = parseInt(listId, 10);
+      const isNumericList = !isNaN(parsedId);
+
+      let res;
+      if (isNumericList) {
+        res = await taskService.getTasksByList(parsedId);
+      } else {
+        res = await taskService.getTasksByFilter(listId);
+      }
+      setTasks(res.data);
+    } catch (err) {
+      console.error("Lỗi tải danh sách:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+    setSelectedTaskId(null); 
+  }, [listId]);
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return;
+
+    const parsedId = parseInt(listId, 10);
+    const isNumericList = !isNaN(parsedId);
+
+    let targetDate = null;
+    // ĐÚNG YÊU CẦU: Tạo ở 7 Ngày tới HOẶC Hôm nay đều gán mặc định là Hôm nay
+    if (listId === "today" || listId === "next7days") {
+      const today = new Date();
+      targetDate = new Date(today.getTime() - (today.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+    }
+
+    const payload = {
+      title: newTaskTitle.trim(),
+      taskListId: isNumericList ? parsedId : null,
+      dueDate: targetDate, 
+      priority: 0
     };
-    setTasks([newTask, ...tasks]);
-    setInputValue("");
+
+    try {
+      const res = await taskService.create(payload);
+      const newTask = res.data;
+      
+      // ====================================================
+      // LỚP BẢO VỆ CHỐNG TÀNG HÌNH & "NO DATE" CỦA C#
+      // ====================================================
+      if (payload.endDate) {
+        newTask.endDate = payload.endDate;
+        newTask.dueDate = payload.endDate;
+      }
+
+      if (newTask && (newTask.id || newTask.Id)) {
+        setTasks([newTask, ...tasks]); 
+      } else {
+        fetchTasks();
+      }
+      
+      setNewTaskTitle("");
+      setIsInputFocused(false);
+    } catch (err) {
+      alert(err.response?.data?.message || "Không thể thêm tác vụ.");
+    }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') handleAddTask();
-  };
-
-  const toggleComplete = (e, id) => {
+  const handleToggle = async (e, task) => {
     e.stopPropagation();
-    setTasks(tasks.map(task => 
-      task.id === id ? { ...task, completed: !task.completed } : task
-    ));
+    const taskId = task.id || task.Id;
+    setTasks(tasks.map(t => (t.id || t.Id) === taskId ? { ...t, isCompleted: !(t.isCompleted || t.IsCompleted) } : t));
+    try {
+      await taskService.toggleComplete(taskId);
+    } catch (err) {
+      fetchTasks();
+    }
   };
 
-  const toggleMenu = (e, id) => {
-    e.stopPropagation();
-    setOpenMenuId(openMenuId === id ? null : id);
+  // THUẬT TOÁN GOM NHÓM: DÙNG LABEL TIẾNG VIỆT CHUẨN XÁC
+  const getGroupedTasks = () => {
+    
+    // 1. Nếu là List tự tạo hoặc Hộp thư đến -> Danh sách phẳng (Không có ngày)
+    if (!isDateView) {
+      const active = tasks.filter(t => !(t.isCompleted || t.IsCompleted));
+      const completed = tasks.filter(t => (t.isCompleted || t.IsCompleted));
+      const sections = [];
+      
+      if (active.length > 0) {
+        sections.push({ id: 'active', label: '', hideHeader: true, tasks: active });
+      }
+      if (completed.length > 0) {
+        sections.push({ id: 'completed', label: 'Đã hoàn thành', color: 'text-slate-700', hideHeader: false, tasks: completed });
+      }
+      return sections;
+    }
+
+    // 2. Nếu là Hôm nay hoặc 7 Ngày tới -> Gom nhóm thời gian
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+
+    const groups = {
+      overdue: { label: 'Quá hạn', color: 'text-rose-600', hideHeader: false, tasks: [] },
+      today: { label: `${getShortWeekday(now)}, Hôm nay`, color: 'text-slate-800', hideHeader: false, tasks: [] },
+      tomorrow: { label: `${getShortWeekday(tomorrowDate)}, Ngày mai`, color: 'text-slate-800', hideHeader: false, tasks: [] },
+      upcoming: {}, 
+      noDate: { label: 'Chưa lên lịch', color: 'text-slate-500', hideHeader: false, tasks: [] },
+      completed: { label: 'Đã hoàn thành', color: 'text-slate-400', hideHeader: false, tasks: [] }
+    };
+
+    tasks.forEach(task => {
+      const isCompleted = task.isCompleted || task.IsCompleted;
+      if (isCompleted) {
+        groups.completed.tasks.push(task);
+        return;
+      }
+
+      const taskDate = task.dueDate; 
+      
+      if (!taskDate) {
+        groups.noDate.tasks.push(task);
+        return;
+      }
+
+      const dueDateObj = new Date(taskDate);
+      dueDateObj.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((dueDateObj.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays < 0) groups.overdue.tasks.push(task);
+      else if (diffDays === 0) groups.today.tasks.push(task);
+      else if (diffDays === 1) groups.tomorrow.tasks.push(task);
+      else {
+        const dateKey = dueDateObj.toISOString().split('T')[0];
+        if (!groups.upcoming[dateKey]) {
+          groups.upcoming[dateKey] = { 
+            label: formatTickTickHeaderDate(dueDateObj), 
+            color: 'text-slate-800', 
+            hideHeader: false,
+            tasks: [] 
+          };
+        }
+        groups.upcoming[dateKey].tasks.push(task);
+      }
+    });
+
+    const sections = [];
+    if (groups.overdue.tasks.length > 0) sections.push({ id: 'overdue', ...groups.overdue });
+    if (groups.today.tasks.length > 0) sections.push({ id: 'today', ...groups.today });
+    if (groups.tomorrow.tasks.length > 0) sections.push({ id: 'tomorrow', ...groups.tomorrow });
+
+    Object.keys(groups.upcoming).sort().forEach(key => {
+      sections.push({ id: key, ...groups.upcoming[key] });
+    });
+
+    if (groups.noDate.tasks.length > 0) sections.push({ id: 'noDate', ...groups.noDate });
+    if (groups.completed.tasks.length > 0) sections.push({ id: 'completed', ...groups.completed });
+
+    return sections;
   };
 
-  const deleteTask = (e, id) => {
-    e.stopPropagation();
-    setTasks(tasks.filter(t => t.id !== id));
-    setOpenMenuId(null);
-    if (selectedTaskId === id) setSelectedTaskId(null);
+  // NHÃN THỜI GIAN BÊN PHẢI (Hôm nay, Hôm qua, 10 Thg 4...)
+  const getRightSideDateLabel = (dateString, isCompleted) => {
+    if (!dateString || isCompleted) return null;
+    const dueDate = new Date(dateString);
+    dueDate.setHours(0,0,0,0);
+    const now = new Date();
+    now.setHours(0,0,0,0);
+    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < -1) return { text: `${dueDate.getDate()} Thg ${dueDate.getMonth() + 1}`, color: 'text-rose-500' };
+    if (diffDays === -1) return { text: 'Hôm qua', color: 'text-rose-500' };
+    if (diffDays === 0) return { text: 'Hôm nay', color: 'text-blue-500' };
+    if (diffDays === 1) return { text: 'Ngày mai', color: 'text-purple-500' };
+    return { text: getShortWeekday(dueDate), color: 'text-slate-400' };
   };
 
-  const updateDescription = (id, newDesc) => {
-    setTasks(tasks.map(task => 
-      task.id === id ? { ...task, description: newDesc } : task
-    ));
-  };
+  const selectedTask = tasks.find((t) => (t.id || t.Id) === selectedTaskId);
+  const groupedSections = getGroupedTasks();
 
   return (
-    <div className="flex w-full h-full bg-white">
+    <div className="flex w-full h-full bg-white overflow-hidden">
       
-      {/* ================= CỘT TRÁI: DANH SÁCH TASK ================= */}
-      <div className="flex-1 p-6 transition-all">
-        <div className="max-w-3xl">
+      <div className="flex-1 px-8 py-8 overflow-y-auto custom-scrollbar scroll-smooth">
+        <div className="w-full">
           
-          {/* ĐÃ SỬA: Tiêu đề tự động thay đổi theo List đang chọn */}
-          <div className="mb-6 flex items-baseline gap-3">
-            <h1 className="text-2xl font-bold text-gray-800">{activeList?.name || 'Đang tải...'}</h1>
-            <span className="text-sm font-medium text-gray-400">T2, 23 thg 3</span>
+          <div className="mb-6 flex items-end justify-between border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <h1 className="text-[26px] font-bold text-slate-800 tracking-tight leading-none">{listNameDisplay}</h1>
+              <span className="text-[12px] font-semibold text-slate-400 mt-1">
+                 {new Date().toLocaleDateString('vi-VN', { weekday: 'short', day: 'numeric', month: 'short' })}
+              </span>
+            </div>
+            <div className="flex gap-1 text-slate-400">
+               <button className="w-8 h-8 rounded-md hover:bg-slate-100 flex items-center justify-center transition-colors"><span className="material-symbols-outlined text-[20px]">sort</span></button>
+               <button className="w-8 h-8 rounded-md hover:bg-slate-100 flex items-center justify-center transition-colors"><span className="material-symbols-outlined text-[20px]">more_horiz</span></button>
+            </div>
           </div>
 
-          <div className={`mb-8 bg-white border rounded-md overflow-hidden transition-all duration-200 ${isInputFocused ? 'border-primary ring-2 ring-primary/20 shadow-sm' : 'border-gray-300'}`}>
-            <input 
-              type="text" 
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onFocus={() => setIsInputFocused(true)}
-              onKeyDown={handleKeyDown}
-              // ĐÃ SỬA: Placeholder đổi tên động theo List
-              placeholder={`Thêm tác vụ vào '${activeList?.name || 'danh sách'}', nhấn Enter để lưu`} 
-              className="w-full px-4 py-3.5 outline-none text-[15px] text-gray-800 placeholder:text-gray-400"
-            />
-            {isInputFocused && (
-              <div className="bg-[#fafafa] px-3 py-2 flex items-center justify-between border-t border-gray-100">
-                <div className="flex gap-0.5">
-                  <button className="p-1.5 rounded-md text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors"><span className="material-symbols-outlined text-[20px]">calendar_today</span></button>
-                  <button className="p-1.5 rounded-md text-gray-400 hover:bg-gray-200 hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-[20px]">flag</span></button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setIsInputFocused(false)} className="text-sm font-medium text-gray-500 hover:text-gray-800 px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors">Hủy</button>
-                  <button onClick={handleAddTask} className="bg-primary text-white text-sm font-bold px-4 py-1.5 rounded-md hover:bg-primary/90 transition-colors">Thêm</button>
+          {!isReadOnlyView && (
+            <div className={`mb-8 transition-all duration-300 rounded-xl border ${
+               isInputFocused ? 'border-blue-500 bg-white shadow-[0_2px_12px_rgba(59,130,246,0.1)]' : 'border-transparent bg-slate-50 hover:bg-slate-100'
+            }`}>
+              <div className="flex items-center px-4">
+                <span className={`material-symbols-outlined text-[20px] transition-colors ${isInputFocused ? 'text-blue-500' : 'text-slate-400'}`}>add</span>
+                <input
+                  className="w-full px-3 py-3.5 outline-none text-slate-700 text-[14px] font-medium placeholder:text-slate-500 bg-transparent"
+                  placeholder={`Thêm tác vụ...`}
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  onFocus={() => setIsInputFocused(true)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAddTask()}
+                />
+              </div>
+
+              <div className={`overflow-hidden transition-all duration-200 ease-in-out ${isInputFocused ? 'max-h-16 opacity-100 border-t border-slate-100' : 'max-h-0 opacity-0'}`}>
+                <div className="px-4 py-2 flex justify-between items-center bg-white rounded-b-xl">
+                  <div className="flex gap-1 text-slate-400">
+                     <button className="w-7 h-7 flex items-center justify-center hover:bg-slate-100 hover:text-blue-500 rounded transition-colors"><span className="material-symbols-outlined text-[16px]">calendar_today</span></button>
+                     <button className="w-7 h-7 flex items-center justify-center hover:bg-slate-100 hover:text-rose-500 rounded transition-colors"><span className="material-symbols-outlined text-[16px]">flag</span></button>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setIsInputFocused(false)} className="px-3 py-1.5 text-[13px] font-semibold text-slate-500 hover:bg-slate-100 rounded-md transition-colors">Hủy</button>
+                    <button onClick={handleAddTask} className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-[13px] font-semibold shadow-sm transition-colors">Lưu</button>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          {/* Danh sách Task */}
-          <div className="flex flex-col">
-            {tasks.map(task => (
-              <div 
-                key={task.id} 
-                onClick={() => setSelectedTaskId(task.id)}
-                className={`group flex items-center gap-3 py-3 border-b border-gray-100 hover:bg-[#fafafa] transition-colors cursor-pointer px-2 -mx-2 rounded-md ${
-                  selectedTaskId === task.id ? "bg-blue-50/50" : ""
-                }`}
-              >
-                <button 
-                  onClick={(e) => toggleComplete(e, task.id)}
-                  className={`w-[18px] h-[18px] rounded-[4px] border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    task.completed ? "bg-gray-400 border-gray-400" : "border-gray-300 hover:border-primary"
-                  }`}
-                >
-                  {task.completed && <span className="material-symbols-outlined text-[14px] text-white font-bold" style={{ fontVariationSettings: "'FILL' 1" }}>check</span>}
-                </button>
-
-                <div className="flex-1 flex items-center gap-3">
-                  <span className={`text-[15px] font-medium transition-all ${task.completed ? "text-gray-400 line-through" : "text-gray-800"}`}>
-                    {task.title}
-                  </span>
-                  {!task.completed && (
-                    <span className="text-[12px] font-medium text-gray-500 flex items-center gap-1 mt-0.5">
-                      <span className={`material-symbols-outlined text-[14px] ${task.priority}`} style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>
-                      {task.date}
-                    </span>
-                  )}
-                </div>
-
-                <div className="relative">
-                  <button 
-                    onClick={(e) => toggleMenu(e, task.id)}
-                    className={`w-8 h-8 rounded-md flex items-center justify-center transition-all ${
-                      openMenuId === task.id ? "bg-gray-200 text-gray-800 opacity-100" : "text-gray-400 opacity-0 group-hover:opacity-100 hover:bg-gray-200 hover:text-gray-800"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
-                  </button>
-
-                  {openMenuId === task.id && (
-                    <div className="absolute right-0 top-10 w-44 bg-white rounded-lg shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-gray-100 py-1.5 z-50">
-                      <button className="w-full text-left px-4 py-2 text-[14px] font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-3"><span className="material-symbols-outlined text-[18px] text-gray-400">calendar_today</span> Đặt ngày</button>
-                      <hr className="my-1.5 border-gray-100" />
-                      <button onClick={(e) => deleteTask(e, task.id)} className="w-full text-left px-4 py-2 text-[14px] font-medium text-red-600 hover:bg-red-50 flex items-center gap-3"><span className="material-symbols-outlined text-[18px]">delete</span> Xóa tác vụ</button>
+          <div className="flex flex-col w-full pb-10">
+            {isLoading ? (
+               <div className="py-12 flex items-center justify-center"><div className="w-6 h-6 border-2 border-slate-200 border-t-blue-500 rounded-full animate-spin"></div></div>
+            ) : tasks.length === 0 ? (
+               <div className="py-20 flex flex-col items-center justify-center text-center">
+                 <div className="w-20 h-20 mb-4 opacity-50 grayscale flex items-center justify-center"><span className="material-symbols-outlined text-[64px] text-slate-300">task</span></div>
+                 <h3 className="text-[15px] font-bold text-slate-600 mb-1">Đã hoàn thành mọi việc</h3>
+                 <p className="text-slate-400 text-[13px]">Bạn không có tác vụ nào ở đây.</p>
+               </div>
+            ) : (
+              groupedSections.map((section) => (
+                <div key={section.id} className="mb-6">
+                  
+                  {!section.hideHeader && (
+                    <div className={`flex items-center justify-between mb-2 px-1 border-b border-slate-50 pb-1.5`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`material-symbols-outlined text-[18px] transition-transform cursor-pointer hover:bg-slate-100 rounded-sm ${section.color}`}>expand_more</span>
+                        <h3 className={`text-[13px] font-bold tracking-wide ${section.color}`}>{section.label}</h3>
+                        <span className="text-[11px] font-bold text-slate-300 ml-1">{section.tasks.length}</span>
+                      </div>
+                      
+                      {section.id === 'overdue' && (
+                        <button className="text-[12px] font-medium text-blue-500 hover:underline px-2">Trì hoãn</button>
+                      )}
                     </div>
                   )}
-                </div>
-              </div>
-            ))}
-          </div>
+                  
+                  <div className="flex flex-col pl-1">
+                    {section.tasks.map((task) => {
+                      const taskId = task.id || task.Id;
+                      const taskTitle = task.title || task.Title;
+                      const isCompleted = task.isCompleted || task.IsCompleted;
+                      const taskListId = task.taskListId !== undefined ? task.taskListId : task.TaskListId;
+                      const taskDate = task.endDate || task.EndDate || task.dueDate || task.DueDate;
+                      
+                      const rightLabel = getRightSideDateLabel(taskDate, isCompleted);
+                      
+                      return (
+                        <div
+                          key={taskId}
+                          onClick={() => setSelectedTaskId(taskId)}
+                          className={`group flex items-center px-2 py-2.5 cursor-pointer border-b border-slate-50 last:border-b-0 transition-colors rounded-md ${
+                            selectedTaskId === taskId ? "bg-blue-50/50" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="shrink-0 w-6 flex items-center">
+                            <button
+                              onClick={(e) => handleToggle(e, task)}
+                              className={`w-[18px] h-[18px] rounded-full border flex items-center justify-center transition-all duration-200 ${
+                                isCompleted ? "bg-blue-500 border-blue-500" : "border-slate-300 hover:border-blue-500"
+                              }`}
+                            >
+                              {isCompleted && <span className="material-symbols-outlined text-white text-[12px] font-bold">check</span>}
+                            </button>
+                          </div>
 
+                          <div className="flex-1 min-w-0 pr-4">
+                            <p className={`text-[14px] truncate transition-colors ${
+                              isCompleted ? "text-slate-400 line-through" : "text-slate-800"
+                            }`}>
+                              {taskTitle}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-end shrink-0 gap-3">
+                            <div className="flex items-center gap-1.5 text-[12px]">
+                               {/* CHỮ INBOX CỐ ĐỊNH, KHÔNG CẦN HOVER NỮA */}
+                               {taskListId === null && !isCompleted && isDateView && (
+                                  <span className="text-slate-400 font-medium mr-1">Inbox</span>
+                               )}
+                               {rightLabel && (
+                                  <span className={`${rightLabel.color} font-medium`}>{rightLabel.text}</span>
+                               )}
+                            </div>
+                            <div className="w-5 flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                              {listId === 'trash' ? (
+                                <button className="text-rose-400 hover:text-rose-600"><span className="material-symbols-outlined text-[16px]">delete</span></button>
+                              ) : (
+                                <span className="material-symbols-outlined text-slate-300 text-[18px] cursor-grab hover:text-slate-500">drag_indicator</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* ================= CỘT PHẢI: CHI TIẾT TASK (DETAIL) ================= */}
-      {selectedTask && (
-        <div className="w-[360px] xl:w-[420px] bg-[#fafafa] border-l border-gray-200 flex flex-col sticky top-0 min-h-[calc(100vh-80px)] shrink-0 shadow-[-10px_0_20px_rgba(0,0,0,0.03)] z-10 transition-transform duration-300">
-          
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white">
-            <span className="font-bold text-gray-800">Chi tiết tác vụ</span>
-            <button 
-              onClick={() => setSelectedTaskId(null)} 
-              className="w-8 h-8 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px]">close</span>
-            </button>
+      {selectedTask && (() => {
+        const detailTitle = selectedTask.title || selectedTask.Title;
+        const detailDate = selectedTask.endDate || selectedTask.EndDate || selectedTask.dueDate || selectedTask.DueDate;
+        const detailCompleted = selectedTask.isCompleted || selectedTask.IsCompleted;
+        const detailDescription = selectedTask.description || selectedTask.Description || "";
+
+        return (
+          <div className="w-[380px] bg-white border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200">
+             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0">
+                <span className="text-[12px] font-bold text-slate-400 tracking-wider">CHI TIẾT</span>
+                <button onClick={() => setSelectedTaskId(null)} className="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
+                   <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+             </div>
+             
+             <div className="p-5 overflow-y-auto custom-scrollbar flex-1">
+                <textarea 
+                   className={`w-full text-[18px] font-bold text-slate-800 outline-none resize-none bg-transparent placeholder:text-slate-300 leading-snug ${detailCompleted ? 'line-through text-slate-400' : ''}`}
+                   defaultValue={detailTitle}
+                   rows={2}
+                   placeholder="Tên tác vụ..."
+                />
+                
+                <div className="mt-6 space-y-2">
+                  <div className="flex items-center gap-3 text-[13px] text-slate-600 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
+                    <span className="material-symbols-outlined text-[18px] text-blue-500">calendar_month</span>
+                    <span className="font-medium text-slate-700 flex-1">{detailDate ? new Date(detailDate).toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'Ngày đến hạn'}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[13px] text-slate-600 p-2 rounded-md hover:bg-slate-50 cursor-pointer">
+                    <span className="material-symbols-outlined text-[18px] text-purple-500">folder</span>
+                    <span className="font-medium text-slate-700 flex-1">{listNameDisplay}</span>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                   <textarea 
+                      className="w-full text-[13px] text-slate-600 bg-slate-50 border border-transparent focus:border-blue-300 focus:bg-white rounded-lg p-3 outline-none resize-none transition-colors"
+                      placeholder="Mô tả..."
+                      rows={8}
+                      defaultValue={detailDescription}
+                   />
+                </div>
+             </div>
+
+             <div className="px-5 py-3 border-t border-slate-100 bg-white flex items-center justify-between text-[12px] text-slate-400">
+                <button className="hover:text-slate-600 transition-colors"><span className="material-symbols-outlined text-[18px]">push_pin</span></button>
+                <span>Đã tạo hôm nay</span>
+                <button className="hover:text-rose-500 transition-colors"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+             </div>
           </div>
-
-          <div className="bg-white px-5 py-6 border-b border-gray-100">
-            <input 
-              type="text" 
-              value={selectedTask.title} 
-              readOnly
-              className="w-full text-lg font-bold text-gray-800 outline-none mb-6 border-transparent border-b pb-1"
-            />
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Dự án</span>
-                {/* ĐÃ SỬA: Chỗ này cũng có thể lấy tên List động luôn */}
-                <button className="text-sm font-medium text-gray-800 hover:bg-gray-100 px-2 py-1 rounded transition-colors flex items-center gap-1">{activeList?.name || 'Không xác định'} <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Ngày hết hạn</span>
-                <button className="text-sm font-medium text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors flex items-center gap-1">{selectedTask.date} <span className="material-symbols-outlined text-[16px]">calendar_today</span></button>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Mức độ ưu tiên</span>
-                <button className="text-sm font-medium text-red-500 hover:bg-red-50 px-2 py-1 rounded transition-colors flex items-center gap-1">Cao <span className="material-symbols-outlined text-[16px]">flag</span></button>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1 p-5 bg-[#fafafa]">
-            <textarea 
-              placeholder="Thêm mô tả..." 
-              value={selectedTask.description || ""}
-              onChange={(e) => updateDescription(selectedTask.id, e.target.value)}
-              className="w-full h-32 bg-white border border-gray-200 rounded-md p-3 text-sm text-gray-800 outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none placeholder:text-gray-400 transition-all shadow-sm"
-            ></textarea>
-            <div className="mt-3 flex justify-end">
-              <button className="bg-white border border-gray-300 text-gray-700 font-medium text-sm px-4 py-1.5 rounded-md hover:bg-gray-50 transition-colors shadow-sm">
-                Lưu
-              </button>
-            </div>
-          </div>
-
-        </div>
-      )}
-
+        )
+      })()}
     </div>
   );
 }

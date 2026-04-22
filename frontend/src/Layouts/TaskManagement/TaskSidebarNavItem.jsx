@@ -1,4 +1,5 @@
 export default function TaskSidebarNavItem({
+  id, // 1. Bổ sung tham số id
   list,
   label,
   icon,
@@ -15,14 +16,19 @@ export default function TaskSidebarNavItem({
   onDelete
 }) {
   const menuKey = `list-${list?.id}`;
-  const isCurrentlyActive =
-    (list && activeListId === list.id) || activeListId === label?.toLowerCase();
+  
+  // 2. Chốt ID chuẩn: Nếu là list thật thì lấy list.id, nếu là Bộ lọc thì lấy id truyền vào
+  const itemKey = list ? list.id : (id || label?.toLowerCase());
+  
+  // 3. So sánh chuẩn xác
+  const isCurrentlyActive = activeListId === itemKey;
   const isHexColor = color?.startsWith('#');
 
   return (
     <div
       onClick={() => {
-        if (onSelectList) onSelectList({ id: list ? list.id : label.toLowerCase(), name: label });
+        // 4. Truyền ID chuẩn lên trên
+        if (onSelectList) onSelectList({ id: itemKey, name: label });
       }}
       className={`relative w-full flex items-center gap-3 px-3 py-2 rounded-xl transition-all group cursor-pointer ${
         isCurrentlyActive
@@ -30,6 +36,7 @@ export default function TaskSidebarNavItem({
           : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900 font-medium'
       }`}
     >
+      {/* ... Phần giao diện bên dưới giữ nguyên y hệt của bạn ... */}
       {isDot ? (
         <span
           className={`w-2.5 h-2.5 rounded-full ml-0.5 shrink-0 transition-transform group-hover:scale-110 ${
