@@ -8,13 +8,7 @@ import TaskSidebarTagItem from './TaskSidebarTagItem';
 import { useNavigate } from 'react-router-dom';
 
 const COLOR_OPTIONS = [
-  '#f87171',
-  '#fb923c',
-  '#4ade80',
-  '#60a5fa',
-  '#c084fc',
-  '#f472b6',
-  '#9ca3af'
+  '#f87171', '#fb923c', '#4ade80', '#60a5fa', '#c084fc', '#f472b6', '#9ca3af'
 ];
 
 export default function ListManager({ activeListId, onSelectList }) {
@@ -23,52 +17,55 @@ export default function ListManager({ activeListId, onSelectList }) {
   const [isLoading, setIsLoading] = useState(true);
   const [activeMenuId, setActiveMenuId] = useState(null);
 
+  // Trạng thái thu gọn/mở rộng
   const [isListsExpanded, setIsListsExpanded] = useState(true);
   const [expandedFolders, setExpandedFolders] = useState({});
+  const [isTagsExpanded, setIsTagsExpanded] = useState(true);
 
+  // Trạng thái thêm/sửa Danh sách
   const [isAddingList, setIsAddingList] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [newListFolder, setNewListFolder] = useState('');
   const [newListColor, setNewListColor] = useState(COLOR_OPTIONS[3]);
   const [isSaving, setIsSaving] = useState(false);
-
-  const [editingFolderId, setEditingFolderId] = useState(null);
-  const [editFolderName, setEditFolderName] = useState('');
   const [editingListId, setEditingListId] = useState(null);
   const [editListName, setEditListName] = useState('');
   const [editListFolder, setEditListFolder] = useState('');
   const [editListColor, setEditListColor] = useState(COLOR_OPTIONS[3]);
 
+  // Trạng thái Thư mục
+  const [editingFolderId, setEditingFolderId] = useState(null);
+  const [editFolderName, setEditFolderName] = useState('');
+
+  // Trạng thái Nhãn (Tags)
   const [tags, setTags] = useState([]);
-  const [isTagsExpanded, setIsTagsExpanded] = useState(true);
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState('');
   const [newTagColor, setNewTagColor] = useState(COLOR_OPTIONS[6]);
   const [isSavingTag, setIsSavingTag] = useState(false);
-
   const [editingTagId, setEditingTagId] = useState(null);
   const [editTagName, setEditTagName] = useState('');
   const [editTagColor, setEditTagColor] = useState(COLOR_OPTIONS[6]);
 
   const pressTimer = useRef(null);
 
+  // Lấy dữ liệu danh sách và thư mục
   const fetchSidebarData = async () => {
     try {
       const response = await api.get('/tasklists/sidebar');
       const data = response.data;
       setSidebarData({ folders: data.folders || [], standAloneLists: data.standAloneLists || [] });
       const initialExpandedState = {};
-      (data.folders || []).forEach((folder) => {
-        initialExpandedState[folder.id] = true;
-      });
+      (data.folders || []).forEach((folder) => { initialExpandedState[folder.id] = true; });
       setExpandedFolders(initialExpandedState);
     } catch (error) {
-      console.error(error);
+      console.error("Lỗi tải dữ liệu sidebar:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Lấy dữ liệu nhãn dán
   const fetchTags = async () => {
     try {
       const response = await tagService.getAll();
@@ -89,73 +86,10 @@ export default function ListManager({ activeListId, onSelectList }) {
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
-  const handleSaveTag = async (e) => {
-    e.preventDefault();
-    if (!newTagName.trim()) return;
-
-    setIsSavingTag(true);
-    try {
-      await tagService.create({ name: newTagName.trim(), color: newTagColor });
-      setIsAddingTag(false);
-      setNewTagName('');
-      setNewTagColor(COLOR_OPTIONS[6]);
-      await fetchTags();
-    } catch (error) {
-      alert('Lỗi khi tạo tag!');
-    } finally {
-      setIsSavingTag(false);
-    }
-  };
-
-  const startEditTag = (tag) => {
-    setEditingTagId(tag.id);
-    setEditTagName(tag.name);
-    setEditTagColor(tag.color);
-    setActiveMenuId(null);
-  };
-
-  const submitEditTag = async (e) => {
-    e.preventDefault();
-    if (!editTagName.trim()) return;
-
-    try {
-      await tagService.update(editingTagId, { name: editTagName.trim(), color: editTagColor });
-      setEditingTagId(null);
-      await fetchTags();
-    } catch (error) {
-      alert('Lỗi cập nhật tag!');
-    }
-  };
-
-  const handleDeleteTag = async (tagId, tagName) => {
-    if (window.confirm(`Bạn có chắc muốn xóa nhãn "${tagName}"?`)) {
-      try {
-        await tagService.delete(tagId);
-        await fetchTags();
-      } catch (error) {
-        alert('Lỗi xóa tag!');
-      }
-    }
-  };
-
-  const handlePressStart = (menuKey) => {
-    pressTimer.current = setTimeout(() => {
-      setActiveMenuId(menuKey);
-    }, 600);
-  };
-
-  const handlePressEnd = () => {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-  };
-
-  const toggleFolder = (folderId) => {
-    setExpandedFolders((prev) => ({ ...prev, [folderId]: !prev[folderId] }));
-  };
-
+  // --- LOGIC XỬ LÝ DANH SÁCH ---
   const handleSaveInline = async () => {
     if (!newListName.trim()) return;
     setIsSaving(true);
-
     try {
       await api.post('/tasklists', {
         name: newListName,
@@ -174,28 +108,8 @@ export default function ListManager({ activeListId, onSelectList }) {
     }
   };
 
-  const handleDeleteList = async (list) => {
-    if (window.confirm(`Bạn có chắc muốn chuyển danh sách "${list.name}" vào thùng rác?`)) {
-      try {
-        await api.delete(`/tasklists/${list.id}`);
-        await fetchSidebarData();
-      } catch (error) {
-        alert('Lỗi xóa danh sách!');
-      }
-    }
-  };
-
-  const startEditList = (list, currentFolderName) => {
-    setEditingListId(list.id);
-    setEditListName(list.name);
-    setEditListFolder(currentFolderName || '');
-    setEditListColor(list.color || COLOR_OPTIONS[3]);
-    setActiveMenuId(null);
-  };
-
   const submitEditList = async () => {
     if (!editListName.trim()) return;
-
     try {
       await api.put(`/tasklists/${editingListId}`, {
         name: editListName,
@@ -210,39 +124,37 @@ export default function ListManager({ activeListId, onSelectList }) {
     }
   };
 
-  const handleDeleteFolder = async (folder) => {
-    if (folder.lists && folder.lists.length > 0) {
-      alert(`❌ KHÔNG THỂ XÓA!\nThư mục "${folder.name}" đang chứa ${folder.lists.length} danh sách.\nVui lòng dọn sạch các danh sách ra ngoài trước khi xóa thư mục.`);
-      return;
-    }
-
-    if (window.confirm(`Bạn có chắc chắn muốn xóa thư mục "${folder.name}" không?`)) {
-      try {
-        await api.delete(`/taskfolders/${folder.id}`);
-        await fetchSidebarData();
-      } catch (error) {
-        alert('Lỗi xóa thư mục!');
-      }
-    }
-  };
-
-  const submitEditFolder = async (folderId, oldName) => {
-    if (!editFolderName.trim() || editFolderName === oldName) {
-      setEditingFolderId(null);
-      return;
-    }
-
+  // --- LOGIC XỬ LÝ NHÃN (TAG) ---
+  const handleSaveTag = async (e) => {
+    e.preventDefault();
+    if (!newTagName.trim()) return;
+    setIsSavingTag(true);
     try {
-      await api.put(`/taskfolders/${folderId}`, { name: editFolderName });
-      setEditingFolderId(null);
-      await fetchSidebarData();
+      await tagService.create({ name: newTagName.trim(), color: newTagColor });
+      setIsAddingTag(false);
+      setNewTagName('');
+      setNewTagColor(COLOR_OPTIONS[6]);
+      await fetchTags();
     } catch (error) {
-      alert('Lỗi cập nhật thư mục!');
-      setEditingFolderId(null);
+      alert('Lỗi khi tạo tag!');
+    } finally {
+      setIsSavingTag(false);
     }
   };
 
-  // SỬA Ở ĐÂY: Thêm thuộc tính 'id' vào destructuring
+  const submitEditTag = async (e) => {
+    e.preventDefault();
+    if (!editTagName.trim()) return;
+    try {
+      await tagService.update(editingTagId, { name: editTagName.trim(), color: editTagColor });
+      setEditingTagId(null);
+      await fetchTags();
+    } catch (error) {
+      alert('Lỗi cập nhật tag!');
+    }
+  };
+
+  // --- RENDER HELPERS ---
   const renderNavItem = ({ id, list, currentFolderName, icon, isDot, color, label, count, showActions }) => {
     if (list?.id === editingListId) {
       return (
@@ -266,19 +178,15 @@ export default function ListManager({ activeListId, onSelectList }) {
     }
 
     const handleItemClick = (itemInfo) => {
-      // 1. Đổi URL trên trình duyệt
+      // Chuyển hướng URL cho các bộ lọc hoặc danh sách
       navigate(`/features/${itemInfo.id}`);
-      
-      // 2. Vẫn gọi hàm cũ để React cập nhật component ngay lập tức
-      if (onSelectList) {
-        onSelectList(itemInfo);
-      }
+      if (onSelectList) onSelectList(itemInfo);
     };
 
     return (
       <TaskSidebarNavItem
         key={list ? `item-${list.id}` : `item-${id || label}`}
-        id={id} // SỬA Ở ĐÂY: Truyền id xuống Component con
+        id={id} 
         list={list}
         label={label}
         icon={icon}
@@ -291,222 +199,113 @@ export default function ListManager({ activeListId, onSelectList }) {
         onSelectList={handleItemClick}
         showActions={showActions}
         currentFolderName={currentFolderName}
-        onEdit={startEditList}
-        onDelete={handleDeleteList}
+        onEdit={(lst, folder) => {
+           setEditingListId(lst.id);
+           setEditListName(lst.name);
+           setEditListFolder(folder || '');
+           setEditListColor(lst.color || COLOR_OPTIONS[3]);
+           setActiveMenuId(null);
+        }}
+        onDelete={async (lst) => {
+          if (window.confirm(`Xóa danh sách "${lst.name}"?`)) {
+            await api.delete(`/tasklists/${lst.id}`);
+            fetchSidebarData();
+          }
+        }}
       />
     );
   };
 
   return (
     <aside className="w-[280px] bg-[#fcfcfc] border-r border-gray-200 h-full flex flex-col py-5 shrink-0 z-10">
+      {/* 1. Bộ lọc thông minh */}
       <div className="px-3 mb-6">
         <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Bộ lọc thông minh</h3>
         <div className="space-y-1">
-          {/* SỬA Ở ĐÂY: Thêm tham số id chuẩn bằng tiếng Anh */}
           {renderNavItem({ id: 'inbox', icon: 'inbox', color: 'text-blue-500', label: 'Hộp thư đến' })}
           {renderNavItem({ id: 'today', icon: 'today', color: 'text-green-500', label: 'Hôm nay' })}
           {renderNavItem({ id: 'next7days', icon: 'date_range', color: 'text-purple-500', label: '7 Ngày tới' })}
         </div>
       </div>
 
+      {/* 2. Trạng thái */}
       <div className="px-3 mb-6">
         <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-2">Trạng thái</h3>
         <div className="space-y-1">
-          {/* SỬA Ở ĐÂY: Thêm tham số id chuẩn bằng tiếng Anh */}
-          {renderNavItem({ id: 'completed', icon: 'task_alt', color: 'text-teal-500', label: 'Đã hoàn thành', count: 0 })}
-          {renderNavItem({ id: 'blocked', icon: 'block', color: 'text-orange-400', label: 'Không làm', count: 0 })}
-          {renderNavItem({ id: 'trash', icon: 'delete', color: 'text-gray-400', label: 'Thùng rác', count: 0 })}
+          {renderNavItem({ id: 'completed', icon: 'task_alt', color: 'text-teal-500', label: 'Đã hoàn thành' })}
+          {renderNavItem({ id: 'blocked', icon: 'block', color: 'text-orange-400', label: 'Không làm' })}
+          {renderNavItem({ id: 'trash', icon: 'delete', color: 'text-gray-400', label: 'Thùng rác' })}
         </div>
       </div>
 
-      <div className="px-3 flex-1 overflow-y-auto custom-scrollbar pb-20">
+      {/* 3. Danh sách tự tạo */}
+      <div className="px-3 flex-1 overflow-y-auto custom-scrollbar pb-10">
         <div className="flex items-center justify-between px-3 py-2 group text-gray-400 hover:text-gray-700 transition-colors">
           <div className="flex items-center gap-1 cursor-pointer flex-1" onClick={() => setIsListsExpanded(!isListsExpanded)}>
             <span className="material-symbols-outlined text-[18px] transition-transform">{isListsExpanded ? 'expand_more' : 'chevron_right'}</span>
             <span className="text-[11px] font-bold uppercase tracking-widest">Danh sách</span>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsListsExpanded(true);
-              setIsAddingList(true);
-            }}
-            className="material-symbols-outlined text-[20px] opacity-0 group-hover:opacity-100 cursor-pointer hover:bg-gray-200 hover:text-blue-600 rounded-md p-0.5 transition-all"
-            title="Thêm danh sách"
-          >
-            add
-          </button>
+          <button onClick={() => setIsAddingList(true)} className="material-symbols-outlined text-[20px] opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all">add</button>
         </div>
 
         {isListsExpanded && (
           <div className="space-y-1 mt-1">
-            {isLoading ? (
-              <div className="flex flex-col items-center justify-center py-6 gap-2">
-                <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs text-gray-400 font-medium">Đang tải dữ liệu...</span>
-              </div>
-            ) : (
-              <>
-                {sidebarData.standAloneLists.map((list) =>
-                  renderNavItem({ list, currentFolderName: '', showActions: true, isDot: true, color: list.color, label: list.name })
-                )}
-
-                {sidebarData.folders.map((folder) => {
-                  const folderMenuKey = `folder-${folder.id}`;
-                  const isEditingThisFolder = editingFolderId === folderMenuKey;
-                  const isFolderOpen = expandedFolders[folder.id];
-
-                  return (
-                    <div key={folderMenuKey} className="mt-4">
-                      <div
-                        className="group relative flex items-center justify-between px-2 py-1.5 hover:bg-gray-100 rounded-xl cursor-pointer transition-colors"
-                        onClick={() => !isEditingThisFolder && toggleFolder(folder.id)}
-                      >
-                        <div className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 uppercase tracking-wider flex-1">
-                          <span className="material-symbols-outlined text-[18px] text-gray-400">{isFolderOpen ? 'expand_more' : 'chevron_right'}</span>
-                          <span className="material-symbols-outlined text-[16px] text-gray-400">{isFolderOpen ? 'folder_open' : 'folder'}</span>
-                          {isEditingThisFolder ? (
-                            <input
-                              autoFocus
-                              value={editFolderName}
-                              onChange={(e) => setEditFolderName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') submitEditFolder(folder.id, folder.name);
-                                if (e.key === 'Escape') setEditingFolderId(null);
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              onBlur={() => submitEditFolder(folder.id, folder.name)}
-                              className="flex-1 min-w-0 bg-white border-2 border-blue-400 rounded-md px-2 py-0.5 text-[12px] text-gray-800 outline-none normal-case tracking-normal shadow-sm"
-                            />
-                          ) : (
-                            <span className="truncate">{folder.name}</span>
-                          )}
-                        </div>
-
-                        {!isEditingThisFolder && (
-                          <div className="relative shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveMenuId(activeMenuId === folderMenuKey ? null : folderMenuKey);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 hover:bg-white shadow-sm text-gray-500 rounded-md p-1 transition-all flex items-center justify-center"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">more_horiz</span>
-                            </button>
-                            {activeMenuId === folderMenuKey && (
-                              <div className="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-100 shadow-xl rounded-lg z-50 py-1.5 overflow-hidden">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingFolderId(folderMenuKey);
-                                    setEditFolderName(folder.name);
-                                    setActiveMenuId(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="material-symbols-outlined text-[16px] text-blue-500">edit</span> Đổi tên
-                                </button>
-                                <div className="h-px bg-gray-100 my-1 mx-2" />
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteFolder(folder);
-                                    setActiveMenuId(null);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">delete</span> Xóa thư mục
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {isFolderOpen && (
-                        <div className="ml-3 space-y-1 mt-1 border-l-2 border-gray-100 pl-2">
-                          {folder.lists.map((list) =>
-                            renderNavItem({ list, currentFolderName: folder.name, showActions: true, isDot: true, color: list.color, label: list.name })
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {isAddingList && (
-                  <TaskSidebarListForm
-                    folders={sidebarData.folders}
-                    colorOptions={COLOR_OPTIONS}
-                    nameValue={newListName}
-                    folderValue={newListFolder}
-                    colorValue={newListColor}
-                    onNameChange={(e) => setNewListName(e.target.value)}
-                    onFolderChange={(e) => setNewListFolder(e.target.value)}
-                    onColorChange={setNewListColor}
-                    onCancel={() => setIsAddingList(false)}
-                    onSave={handleSaveInline}
-                    isSaving={isSaving}
-                  />
-                )}
-              </>
-            )}
+             {sidebarData.standAloneLists.map((list) => renderNavItem({ list, showActions: true, isDot: true, color: list.color, label: list.name }))}
+             {sidebarData.folders.map((folder) => (
+                <div key={folder.id} className="mt-2">
+                   <div className="px-3 py-1 flex items-center gap-2 text-[12px] font-bold text-gray-400 uppercase">
+                      <span className="material-symbols-outlined text-[16px]">folder</span> {folder.name}
+                   </div>
+                   <div className="ml-4 border-l border-gray-100 pl-2">
+                      {folder.lists.map((list) => renderNavItem({ list, currentFolderName: folder.name, showActions: true, isDot: true, color: list.color, label: list.name }))}
+                   </div>
+                </div>
+             ))}
+             {isAddingList && (
+               <TaskSidebarListForm
+                 folders={sidebarData.folders} colorOptions={COLOR_OPTIONS}
+                 nameValue={newListName} folderValue={newListFolder} colorValue={newListColor}
+                 onNameChange={(e) => setNewListName(e.target.value)}
+                 onFolderChange={(e) => setNewListFolder(e.target.value)}
+                 onColorChange={setNewListColor} onCancel={() => setIsAddingList(false)}
+                 onSave={handleSaveInline} isSaving={isSaving}
+               />
+             )}
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between px-3 py-2 group text-gray-400 hover:text-gray-700 transition-colors">
+        {/* 4. Nhãn dán (Tags) */}
+        <div className="mt-6 flex items-center justify-between px-3 py-2 group text-gray-400 hover:text-gray-700 transition-colors">
           <div className="flex items-center gap-1 cursor-pointer flex-1" onClick={() => setIsTagsExpanded(!isTagsExpanded)}>
             <span className="material-symbols-outlined text-[18px] transition-transform">{isTagsExpanded ? 'expand_more' : 'chevron_right'}</span>
             <span className="text-[11px] font-bold uppercase tracking-widest">Nhãn dán</span>
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsTagsExpanded(true);
-              setIsAddingTag(true);
-            }}
-            className="material-symbols-outlined text-[20px] opacity-0 group-hover:opacity-100 cursor-pointer hover:bg-gray-200 hover:text-blue-600 rounded-md p-0.5 transition-all"
-            title="Thêm nhãn dán"
-          >
-            add
-          </button>
+          <button onClick={() => setIsAddingTag(true)} className="material-symbols-outlined text-[20px] opacity-0 group-hover:opacity-100 hover:text-blue-600 transition-all">add</button>
         </div>
 
         {isTagsExpanded && (
           <div className="space-y-1 mt-1">
             {isAddingTag && (
               <TaskSidebarTagForm
-                newTagName={newTagName}
-                newTagColor={newTagColor}
-                colorOptions={COLOR_OPTIONS}
-                onNameChange={(e) => setNewTagName(e.target.value)}
-                onColorChange={setNewTagColor}
-                onCancel={() => setIsAddingTag(false)}
-                onSubmit={handleSaveTag}
-                isSaving={isSavingTag}
+                newTagName={newTagName} newTagColor={newTagColor} colorOptions={COLOR_OPTIONS}
+                onNameChange={(e) => setNewTagName(e.target.value)} onColorChange={setNewTagColor}
+                onCancel={() => setIsAddingTag(false)} onSubmit={handleSaveTag} isSaving={isSavingTag}
               />
             )}
-
             {tags.map((tag) => (
               <TaskSidebarTagItem
                 key={`tag-${tag.id}`}
-                tag={tag}
-                editingTagId={editingTagId}
-                editTagName={editTagName}
-                editTagColor={editTagColor}
-                activeListId={activeListId}
-                activeMenuId={activeMenuId}
-                setActiveMenuId={setActiveMenuId}
-                onStartEdit={startEditTag}
-                onEditNameChange={(e) => setEditTagName(e.target.value)}
-                onEditColorChange={setEditTagColor}
-                onSubmitEdit={submitEditTag}
-                onCancelEdit={() => setEditingTagId(null)}
-                onDelete={handleDeleteTag}
-                onSelectList={onSelectList}
-                onPressStart={handlePressStart}
-                onPressEnd={handlePressEnd}
+                tag={tag} editingTagId={editingTagId} editTagName={editTagName} editTagColor={editTagColor}
+                activeListId={activeListId} activeMenuId={activeMenuId} setActiveMenuId={setActiveMenuId}
+                onStartEdit={(t) => { setEditingTagId(t.id); setEditTagName(t.name); setEditTagColor(t.color); }}
+                onEditNameChange={(e) => setEditTagName(e.target.value)} onEditColorChange={setEditTagColor}
+                onSubmitEdit={submitEditTag} onCancelEdit={() => setEditingTagId(null)}
+                onDelete={async (id, name) => { if(window.confirm(`Xóa nhãn "${name}"?`)) { await tagService.delete(id); fetchTags(); } }}
+                onSelectList={(itemInfo) => {
+                   // CHUYỂN HƯỚNG URL SANG DẠNG tag-ID
+                   navigate(`/features/${itemInfo.id}`, { state: { name: itemInfo.name } }); 
+                   if (onSelectList) onSelectList(itemInfo);
+                }}
               />
             ))}
           </div>

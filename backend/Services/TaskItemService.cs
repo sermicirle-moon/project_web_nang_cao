@@ -202,5 +202,19 @@ namespace backend.Services
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByTagAsync(string userId, int tagId)
+        {
+            var tasks = await _context.TaskItems
+                .Where(t => t.UserId == userId &&
+                            !t.IsArchived &&
+                            t.ParentTaskId == null &&
+                            t.Tags.Any(tag => tag.Id == tagId))
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.DueDate)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
+        }
     }
 }
