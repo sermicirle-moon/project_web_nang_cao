@@ -39,9 +39,18 @@ export default function Navbar() {
                   onClick={() => setShowDropdown(!showDropdown)}
                   className="flex items-center gap-2 bg-surface-container-lowest rounded-full pl-2 pr-3 py-1 shadow-sm hover:shadow transition-all"
                 >
-                  <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
-                    {user.fullName.charAt(0).toUpperCase()}
-                  </div>
+                  {/* Hiển thị avatar nếu có, nếu không thì hiển thị chữ cái đầu */}
+                  {user.avatarUrl ? (
+                    <img 
+                      src={user.avatarUrl} 
+                      alt="Avatar" 
+                      className="w-8 h-8 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+                      {user.fullName?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <span className="font-medium text-on-surface text-sm">{user.fullName}</span>
                   <span className="material-symbols-outlined text-lg">expand_more</span>
                 </button>

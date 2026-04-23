@@ -14,7 +14,7 @@ function Login() {
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
@@ -41,6 +41,7 @@ function Login() {
         role: userRole,
         fullName: data.fullName,
         username: username,
+        avatarUrl: data.avatarUrl
       });
       
       setMessage(`Chào mừng ${data.fullName}! Đăng nhập thành công.`);
@@ -94,22 +95,34 @@ function Login() {
             </div>
             
             {/* Input Password */}
-            <div>
+             <div>
               <label 
                 htmlFor="login-password" 
                 className="block font-body font-medium text-on-surface mb-2"
               >
                 PASSWORD
               </label>
-              <input
-                id="login-password"
-                data-testid="login-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-surface-container-low rounded-xl focus:border-primary focus:ring-0 outline-none transition"
-              />
+              <div className="relative">
+                <input
+                  id="login-password"
+                  data-testid="login-password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-surface-container-low rounded-xl focus:border-primary focus:ring-0 outline-none transition pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500 hover:text-primary transition"
+                >
+                  <span className="material-symbols-outlined">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
+              </div>
             </div>
+
 
             {/* Message Display */}
             {message && (

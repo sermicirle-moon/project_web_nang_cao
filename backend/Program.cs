@@ -123,7 +123,7 @@ if (app.Environment.IsDevelopment())
 }
 // 1. Phải bật CORS trước tiên
 app.UseCors("AllowReactApp");
-
+app.UseStaticFiles(); // Cho phép truy cập file từ wwwroot
 //app.UseHttpsRedirection();
 
 // 2. Bật "Soát vé" (Authentication) - BẮT BUỘC PHẢI NẰM TRÊN Authorization
