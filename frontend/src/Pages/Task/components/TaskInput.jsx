@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import api from "../../../api/api"; 
 
 export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
   const [title, setTitle] = useState("");
@@ -6,18 +7,33 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
   
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTagMenu, setShowTagMenu] = useState(false); 
   const [dateMode, setDateMode] = useState("date"); 
 
   const [priority, setPriority] = useState(0);
-  const [isAllDay, setIsAllDay] = useState(false); // Nút Cả ngày
+  const [isAllDay, setIsAllDay] = useState(false); 
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [dueTime, setDueTime] = useState("");
 
-  if (isReadOnlyView) return null;
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
 
-  // Nếu chuyển về tab Hôm nay, ép nó về chế độ chọn 1 ngày (ẩn thời lượng)
+  // Hàm mở Menu Tag và tự động gọi API lấy dữ liệu MỚI NHẤT
+  const handleOpenTagMenu = () => {
+    const willOpen = !showTagMenu;
+    setShowTagMenu(willOpen);
+    setShowDatePicker(false);
+    setShowPriorityMenu(false);
+
+    if (willOpen) {
+      api.get('/tags')
+         .then(res => setAvailableTags(res.data))
+         .catch(err => console.error("Lỗi tải Tags:", err));
+    }
+  };
+
   useEffect(() => {
     if (listId === "today" && dateMode === "duration") {
       setDateMode("date");
@@ -31,7 +47,6 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
     3: "text-red-500"
   };
 
-  // Hàm build string ISO an toàn để gửi xuống C#
   const buildDateString = (dateStr, timeStr, allDay) => {
     if (!dateStr) return null;
     const [y, m, d] = dateStr.split('-');
@@ -42,13 +57,18 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
     return `${y}-${m}-${d}T${hh}:${mm}:00`;
   };
 
+  const toggleTag = (tagId) => {
+    setSelectedTagIds(prev => 
+      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
+    );
+  };
+
   const handleSave = () => {
     if (!title.trim()) return;
 
     let defaultTargetDate = null;
     if (listId === "today" || listId === "next7days") {
       const today = new Date();
-      // Format chuẩn YYYY-MM-DD
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
@@ -66,10 +86,10 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
       title: title.trim(),
       startDate: finalStartDate,
       dueDate: finalDueDate,
-      priority: priority
+      priority: priority,
+      tagIds: selectedTagIds 
     });
 
-    // Reset Form
     setTitle("");
     setStartDate("");
     setStartTime("");
@@ -78,10 +98,16 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
     setPriority(0);
     setIsAllDay(false);
     setDateMode("date");
+    setSelectedTagIds([]);
+
     setShowDatePicker(false);
     setShowPriorityMenu(false);
+    setShowTagMenu(false);
     setIsFocused(false);
   };
+
+  // ✅ ĐÂY LÀ ĐIỂM SỬA LỖI: Dòng này bắt buộc phải nằm ở dưới cùng, SAU tất cả các hàm useEffect!
+  if (isReadOnlyView) return null;
 
   return (
     <div className={`mb-8 transition-all duration-200 rounded-lg border ${
@@ -104,9 +130,10 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
         <div className="px-4 py-2.5 flex justify-between items-center bg-white rounded-b-lg border-t border-slate-100">
           
           <div className="flex gap-1">
+             
              <div className="relative">
                 <button 
-                  onClick={() => { setShowDatePicker(!showDatePicker); setShowPriorityMenu(false); }}
+                  onClick={() => { setShowDatePicker(!showDatePicker); setShowPriorityMenu(false); setShowTagMenu(false); }}
                   className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${showDatePicker || dueDate ? 'bg-blue-50 text-blue-500' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
                   title="Thiết lập ngày"
                 >
@@ -117,7 +144,6 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                   <>
                     <div className="fixed inset-0 z-30" onClick={() => setShowDatePicker(false)}></div>
                     <div className="absolute top-10 left-0 w-[290px] bg-white border border-slate-200 shadow-xl rounded-lg z-40 overflow-hidden">
-                       
                        <div className="flex border-b border-slate-100 text-[12px] font-bold bg-slate-50">
                           <button 
                             className={`flex-1 py-2 text-center transition-colors ${dateMode === 'date' ? 'text-blue-600 bg-white border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-700'}`}
@@ -125,7 +151,6 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                           >
                             Ngày hạn
                           </button>
-                          {/* CHỈ HIỆN TAB THỜI LƯỢNG NẾU KHÔNG PHẢI LÀ 'HÔM NAY' */}
                           {listId !== 'today' && (
                             <button 
                               className={`flex-1 py-2 text-center transition-colors ${dateMode === 'duration' ? 'text-blue-600 bg-white border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-700'}`}
@@ -137,13 +162,10 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                        </div>
 
                        <div className="p-4 flex flex-col gap-3">
-                          {/* Nút All Day */}
                           <div className="flex items-center mb-1">
                             <label className="flex items-center gap-2 text-[13px] text-slate-600 font-medium cursor-pointer hover:text-slate-800 transition-colors">
                               <input 
-                                type="checkbox" 
-                                checked={isAllDay} 
-                                onChange={(e) => setIsAllDay(e.target.checked)} 
+                                type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} 
                                 className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                               />
                               Cả ngày
@@ -153,9 +175,7 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                           {dateMode === 'date' ? (
                              <div className="flex gap-2">
                                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[12px] outline-none focus:border-blue-400" />
-                                {!isAllDay && (
-                                   <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-[84px] bg-slate-50 border border-slate-200 rounded p-1.5 text-[12px] outline-none focus:border-blue-400" />
-                                )}
+                                {!isAllDay && <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-[84px] bg-slate-50 border border-slate-200 rounded p-1.5 text-[12px] outline-none focus:border-blue-400" />}
                              </div>
                           ) : (
                              <>
@@ -179,7 +199,7 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
 
              <div className="relative">
                 <button 
-                  onClick={() => { setShowPriorityMenu(!showPriorityMenu); setShowDatePicker(false); }}
+                  onClick={() => { setShowPriorityMenu(!showPriorityMenu); setShowDatePicker(false); setShowTagMenu(false); }}
                   className={`w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-slate-100 ${priorityColors[priority]}`}
                   title="Mức độ ưu tiên"
                 >
@@ -207,6 +227,40 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                   </>
                 )}
              </div>
+
+             <div className="relative">
+                <button 
+                  onClick={handleOpenTagMenu} 
+                  className={`w-8 h-8 flex items-center justify-center rounded transition-colors ${selectedTagIds.length > 0 || showTagMenu ? 'bg-blue-50 text-blue-500' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}
+                  title="Thêm thẻ (Tag)"
+                >
+                  <span className="material-symbols-outlined text-[18px]">sell</span>
+                </button>
+
+                {showTagMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowTagMenu(false)}></div>
+                    <div className="absolute top-10 left-0 w-[220px] bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.1)] rounded-md py-2 z-40 max-h-48 overflow-y-auto custom-scrollbar">
+                      {availableTags.length === 0 ? (
+                        <div className="text-center text-[12px] text-slate-400 py-2">Chưa có thẻ nào</div>
+                      ) : availableTags.map(tag => (
+                        <div 
+                          key={tag.id} 
+                          onClick={() => toggleTag(tag.id)}
+                          className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"
+                        >
+                          <div className={`w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center mr-3 transition-colors ${selectedTagIds.includes(tag.id) ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}>
+                             {selectedTagIds.includes(tag.id) && <span className="material-symbols-outlined text-white text-[10px] font-bold">check</span>}
+                          </div>
+                          <span className="w-2.5 h-2.5 rounded-full mr-2.5 flex-shrink-0" style={{ backgroundColor: tag.color || '#9ca3af' }}></span>
+                          <span className="text-[13px] text-slate-700 truncate">{tag.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+             </div>
+
           </div>
 
           <div className="flex gap-2 ml-auto">
