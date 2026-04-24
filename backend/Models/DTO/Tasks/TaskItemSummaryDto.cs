@@ -9,5 +9,6 @@
         public int Priority { get; init; }
         public bool IsCompleted { get; init; }
         public int? TaskListId { get; init; }
+        public int? ParentTaskId { get; init; }
     }
 }
