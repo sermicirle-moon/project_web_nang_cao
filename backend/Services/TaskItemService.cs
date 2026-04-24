@@ -13,7 +13,6 @@ namespace backend.Services
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
-        private const int FREE_TASK_LIMIT = 50;
 
         public TaskItemService(AppDbContext context, IMapper mapper)
         {
@@ -24,197 +23,171 @@ namespace backend.Services
         public async Task<TaskItemDetailDto> CreateAsync(CreateTaskItemDto dto, ClaimsPrincipal user)
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isPremium = user.IsInRole("Premium");
 
-            // --- 1. THỰC THI CÁC QUY TẮC GÓI CƯỚC (SUBSCRIPTION RULES) ---
-            if (!isPremium)
-            {
-                // Giới hạn số lượng Task cho tài khoản Free
-                var currentTaskCount = await _context.TaskItems.CountAsync(t => t.UserId == userId);
-                if (currentTaskCount >= FREE_TASK_LIMIT)
-                {
-                    throw new SubscriptionException(
-                        $"Bạn đã đạt giới hạn {FREE_TASK_LIMIT} công việc của gói Free. Hãy nâng cấp để tạo không giới hạn!",
-                        "LIMIT_REACHED"
-                    );
-                }
-
-                // Chặn tính năng tạo Subtask cho tài khoản Free
-                if (dto.ParentTaskId.HasValue)
-                {
-                    throw new SubscriptionException(
-                        "Tính năng Subtask chỉ dành cho thành viên Premium.",
-                        "PRO_FEATURE_SUBTASK"
-                    );
-                }
-            }
-
-            // --- 2. XỬ LÝ NGHIỆP VỤ CHÍNH ---
-            // Vì tên trường ở CreateTaskItemDto và TaskItem hiện tại đều là DueDate,
-            // AutoMapper sẽ tự động ánh xạ chính xác mà không cần gán tay.
             var taskItem = _mapper.Map<TaskItem>(dto);
             taskItem.UserId = userId!;
 
-            // Xử lý Tags (Chỉ gán những tag hợp lệ thuộc sở hữu của người dùng này)
             if (dto.TagIds != null && dto.TagIds.Any())
             {
-                taskItem.Tags = await _context.Tags
-                    .Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId)
-                    .ToListAsync();
+                taskItem.Tags = await _context.Tags.Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId).ToListAsync();
             }
 
             _context.TaskItems.Add(taskItem);
             await _context.SaveChangesAsync();
 
-            // Trả về DTO chi tiết, lúc này trường DueDate sẽ mang giá trị chuẩn xác cho Frontend.
             return _mapper.Map<TaskItemDetailDto>(taskItem);
         }
 
         public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByListAsync(string userId, int listId)
         {
             var tasks = await _context.TaskItems
-                .Where(t => t.UserId == userId &&
-                            t.TaskListId == listId &&
-                            !t.IsArchived &&
-                            !t.IsCompleted &&
-                            t.ParentTaskId == null)
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.DueDate)
-                .ToListAsync();
-
+                .Where(t => t.UserId == userId && t.TaskListId == listId && !t.IsArchived && !t.IsDeleted && !t.IsCompleted)
+                .OrderByDescending(t => t.Priority).ThenBy(t => t.DueDate).ToListAsync();
             return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
         }
 
         public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByFilterAsync(string userId, string filterName)
         {
-            var query = _context.TaskItems.Where(t => t.UserId == userId && !t.IsArchived && t.ParentTaskId == null);
+            var query = _context.TaskItems.Where(t => t.UserId == userId && !t.IsArchived);
             var today = DateTime.Today;
 
             switch (filterName.ToLower())
             {
-                case "inbox":
-                    // HỘP THƯ ĐẾN: Nơi chứa mặc định cho các task mồ côi (Chưa có List)
-                    query = query.Where(t => t.TaskListId == null);
-                    break;
-
-                case "today":
-                    // HÔM NAY: Gom TẤT CẢ task có hạn là hôm nay (Bất kể từ Inbox hay từ các List tự tạo)
-                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date <= today);
-                    break;
-
-                case "next7days":
-                    // 7 NGÀY TỚI: Gom TẤT CẢ task từ ngày mai đến 7 ngày sau (View chéo toàn hệ thống)
-                    var week = today.AddDays(7);
-                    query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date <= week);
-                    break;
-
-                case "completed":
-                    // Lấy tất cả task đã tick hoàn thành
-                    query = _context.TaskItems.Where(t => t.UserId == userId && t.IsCompleted && !t.IsArchived && t.ParentTaskId == null);
-                    break;
-
-                case "trash":
-                    // Thùng rác chứa các task đã xóa
-                    query = _context.TaskItems.Where(t => t.UserId == userId && t.IsArchived && t.ParentTaskId == null);
-                    break;
-
-                case "blocked":
-                    query = query.Where(t => false);
-                    break;
-
-                default:
-                    query = query.Where(t => t.TaskListId == null);
-                    break;
+                case "inbox": query = query.Where(t => t.TaskListId == null && !t.IsDeleted); break;
+                case "today": query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date <= today && !t.IsDeleted); break;
+                case "next7days": var week = today.AddDays(7); query = query.Where(t => t.DueDate.HasValue && t.DueDate.Value.Date <= week && !t.IsDeleted); break;
+                case "completed": query = _context.TaskItems.Where(t => t.UserId == userId && t.IsCompleted && !t.IsArchived && !t.IsDeleted); break;
+                case "trash": query = _context.TaskItems.Where(t => t.UserId == userId && t.IsArchived); break;
+                case "blocked": query = _context.TaskItems.Where(t => t.UserId == userId && t.IsDeleted && !t.IsArchived); break;
+                default: query = query.Where(t => t.TaskListId == null && !t.IsDeleted); break;
             }
 
-            var tasks = await query
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.DueDate)
-                .ToListAsync();
-
+            var tasks = await query.OrderByDescending(t => t.Priority).ThenBy(t => t.DueDate).ToListAsync();
             return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
         }
 
         public async Task<TaskItemDetailDto?> GetByIdAsync(int id, string userId)
         {
-            var task = await _context.TaskItems
-                .Include(t => t.Tags)
-                .Include(t => t.SubTasks) // Load subtasks nếu cần hiện ở Detail bên phải
-                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-
+            var task = await _context.TaskItems.Include(t => t.Tags).Include(t => t.SubTasks).FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
             return _mapper.Map<TaskItemDetailDto>(task);
         }
 
         public async Task<TaskItemDetailDto?> UpdateAsync(int id, UpdateTaskItemDto dto, ClaimsPrincipal user)
         {
             var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            var isPremium = user.IsInRole("Premium");
-
-            var existingTask = await _context.TaskItems
-                .Include(t => t.Tags)
-                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-
+            var existingTask = await _context.TaskItems.Include(t => t.Tags).FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
             if (existingTask == null) return null;
 
-            // --- RULE UPDATE ---
-            // Ví dụ: Nếu user Free cố tình sửa task thành subtask bằng cách thêm ParentTaskId
-            if (!isPremium && dto.ParentTaskId.HasValue && existingTask.ParentTaskId == null)
-            {
-                throw new SubscriptionException("Nâng cấp Pro để chuyển đổi sang Subtask.", "PRO_FEATURE_SUBTASK");
-            }
-
-            // Map dữ liệu mới đè lên dữ liệu cũ
             _mapper.Map(dto, existingTask);
-            existingTask.DueDate = dto.DueDate; // Đồng bộ cấu hình DB
-
-            // Cập nhật Tags
+            existingTask.DueDate = dto.DueDate;
             existingTask.Tags.Clear();
+
             if (dto.TagIds != null && dto.TagIds.Any())
             {
-                existingTask.Tags = await _context.Tags
-                    .Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId)
-                    .ToListAsync();
+                existingTask.Tags = await _context.Tags.Where(t => dto.TagIds.Contains(t.Id) && t.UserId == userId).ToListAsync();
             }
 
             await _context.SaveChangesAsync();
             return _mapper.Map<TaskItemDetailDto>(existingTask);
         }
 
+        public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByTagAsync(string userId, int tagId)
+        {
+            var tasks = await _context.TaskItems
+                .Where(t => t.UserId == userId && !t.IsArchived && !t.IsDeleted && t.Tags.Any(tag => tag.Id == tagId))
+                .OrderByDescending(t => t.Priority).ThenBy(t => t.DueDate).ToListAsync();
+            return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
+        }
+
+        // =======================================================
+        // MA THUẬT ĐỆ QUY: CẬP NHẬT TRẠNG THÁI CHO CẢ DÒNG HỌ
+        // =======================================================
+        private async Task UpdateStatusRecursiveAsync(int taskId, string userId, Action<TaskItem> updateAction)
+        {
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId);
+            if (task == null) return;
+
+            updateAction(task);
+
+            var subTasks = await _context.TaskItems.Where(t => t.ParentTaskId == taskId && t.UserId == userId).ToListAsync();
+            foreach (var sub in subTasks)
+            {
+                await UpdateStatusRecursiveAsync(sub.Id, userId, updateAction);
+            }
+        }
+
+        private async Task DeleteTaskRecursiveAsync(int taskId, string userId)
+        {
+            var subTasks = await _context.TaskItems.Where(t => t.ParentTaskId == taskId && t.UserId == userId).ToListAsync();
+            foreach (var sub in subTasks) await DeleteTaskRecursiveAsync(sub.Id, userId);
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == taskId && t.UserId == userId);
+            if (task != null) _context.TaskItems.Remove(task);
+        }
+
         public async Task<bool> ToggleCompleteAsync(int id, string userId)
         {
-            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-            if (task == null) return false;
+            var rootTask = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            if (rootTask == null) return false;
+            bool newState = !rootTask.IsCompleted;
 
-            task.IsCompleted = !task.IsCompleted;
-            // Cập nhật enum Status theo cấu hình TaskItemConfiguration
-            task.Status = task.IsCompleted ? Models.TaskStatus.Completed : Models.TaskStatus.Todo;
-
+            await UpdateStatusRecursiveAsync(id, userId, t => {
+                t.IsCompleted = newState;
+                t.Status = newState ? Models.TaskStatus.Completed : Models.TaskStatus.Todo;
+            });
             await _context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> DeleteAsync(int id, string userId)
         {
-            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-            if (task == null) return false;
-
-            _context.TaskItems.Remove(task);
+            await UpdateStatusRecursiveAsync(id, userId, t => t.IsArchived = true);
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<IEnumerable<TaskItemSummaryDto>> GetTasksByTagAsync(string userId, int tagId)
+        public async Task<bool> HardDeleteAsync(int id, string userId)
         {
-            var tasks = await _context.TaskItems
-                .Where(t => t.UserId == userId &&
-                            !t.IsArchived &&
-                            t.ParentTaskId == null &&
-                            t.Tags.Any(tag => tag.Id == tagId))
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.DueDate)
-                .ToListAsync();
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            if (task == null) return false;
+            await DeleteTaskRecursiveAsync(id, userId);
+            await _context.SaveChangesAsync();
+            return true;
+        }
 
-            return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
+        public async Task<bool> EmptyTrashAsync(string userId)
+        {
+            var archivedTasks = await _context.TaskItems.Where(t => t.UserId == userId && t.IsArchived).ToListAsync();
+            if (!archivedTasks.Any()) return true;
+            foreach (var task in archivedTasks) await DeleteTaskRecursiveAsync(task.Id, userId);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ToggleWontDoAsync(int id, string userId)
+        {
+            var rootTask = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            if (rootTask == null) return false;
+            bool newState = !rootTask.IsDeleted;
+            await UpdateStatusRecursiveAsync(id, userId, t => t.IsDeleted = newState);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RestoreAsync(int id, string userId)
+        {
+            await UpdateStatusRecursiveAsync(id, userId, t => t.IsArchived = false);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> MoveAsync(int id, int? targetListId, string userId)
+        {
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            if (task == null) return false;
+
+            task.TaskListId = targetListId; // Đổi danh sách cha của nó
+            await _context.SaveChangesAsync();
+            return true;
         }
     }
 }
