@@ -6,6 +6,7 @@ export const taskService = {
   getTasksByFilter: (filterName) => api.get(`/taskitem/filter/${filterName}`),
   getTasksByTag: (tagId) => api.get(`/taskitem/tag/${tagId}`),
   getById: (id) => api.get(`/taskitem/${id}`),
+  update: (id, data) => api.put(`/taskitem/${id}`, data),
   create: (data) => api.post('/taskitem', data),
   toggleComplete: (id) => api.patch(`/taskitem/${id}/complete`),
   delete: (id) => api.delete(`/taskitem/${id}`),
