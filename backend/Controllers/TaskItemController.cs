@@ -44,6 +44,14 @@ namespace backend.Controllers
             return Ok(result);
         }
 
+        [HttpPut("{id}")]
+        public async Task<IActionResult> Update(int id, [FromBody] UpdateTaskItemDto dto)
+        {
+            var result = await _taskService.UpdateAsync(id, dto, User);
+            if (result == null) return NotFound(new { message = "Không tìm thấy tác vụ." });
+            return Ok(result);
+        }
+
         [HttpPatch("{id}/complete")]
         public async Task<IActionResult> ToggleComplete(int id)
         {

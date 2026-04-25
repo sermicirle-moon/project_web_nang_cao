@@ -270,14 +270,29 @@ export default function Body() {
     const hasSubtasks = subtasks.length > 0;
     const isExpanded = expandedTasks[taskId];
     const isMenuActive = activeTaskMenuId === taskId;
+    const isSelected = selectedTaskId === taskId;
+
+    // HIỂU ỨNG TÊN TASK KHI ĐƯỢC CHỌN (Tăng đậm và đổi màu xanh nếu chưa hoàn thành)
+    const titleColorClass = (isCompleted || isBlocked) 
+        ? "text-slate-400 line-through" 
+        : isSelected 
+            ? "text-blue-900 font-semibold" 
+            : "text-slate-800";
 
     return (
-      // ✅ SỬA LỖI STACKING: Task nào đang mở Menu thì đẩy z-index lên z-50, ngược lại thì z-10
       <div key={`tree-${taskId}`} className={`flex flex-col w-full relative ${isMenuActive ? 'z-50' : 'z-10'}`}>
-          <div onClick={() => setSelectedTaskId(taskId)} className={`group flex items-center py-2.5 px-2 cursor-pointer border-b border-slate-50 last:border-b-0 rounded-md transition-colors ${selectedTaskId === taskId ? "bg-blue-50/50" : "hover:bg-slate-50"}`}>
+          {/* ✅ NÂNG CẤP CSS CHO TỪNG DÒNG TASK: Bo góc, viền, đổ bóng, hover khác biệt hoàn toàn */}
+          <div 
+            onClick={() => setSelectedTaskId(taskId)} 
+            className={`group flex items-center py-2.5 px-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 border
+              ${isSelected 
+                  ? "bg-blue-50/80 border-blue-300 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.3)] ring-1 ring-blue-100" 
+                  : "bg-transparent border-transparent hover:bg-slate-100 hover:border-slate-200 hover:shadow-sm"
+              }`}
+          >
               
               {hasSubtasks ? (
-                  <button onClick={(e) => toggleTaskExpand(e, taskId)} className="w-5 h-5 flex items-center justify-center mr-1 text-slate-400 hover:text-slate-600 transition-colors shrink-0">
+                  <button onClick={(e) => toggleTaskExpand(e, taskId)} className="w-5 h-5 flex items-center justify-center mr-1 text-slate-400 hover:text-slate-700 transition-colors shrink-0">
                       <span className={`material-symbols-outlined text-[20px] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}>chevron_right</span>
                   </button>
               ) : (
@@ -294,7 +309,7 @@ export default function Body() {
               </div>
 
               <div className="flex-1 min-w-0 pr-4 flex flex-col justify-center">
-                  <p className={`text-[14px] truncate ${(isCompleted || isBlocked) ? "text-slate-400 line-through" : "text-slate-800"}`}>{task.title || task.Title}</p>
+                  <p className={`text-[14px] truncate transition-colors ${titleColorClass}`}>{task.title || task.Title}</p>
                   {durationText && (
                       <span className={`text-[11.5px] font-medium flex items-center gap-1 mt-0.5 ${(isCompleted || isBlocked) ? 'text-slate-300 line-through' : 'text-slate-500'}`}>
                       <span className={`material-symbols-outlined text-[13px] ${(isCompleted || isBlocked) ? 'text-slate-300' : 'text-blue-500'}`}>schedule</span> {durationText}
@@ -311,12 +326,12 @@ export default function Body() {
                       {rightLabel && <span className={`${rightLabel.color} font-medium`}>{rightLabel.text}</span>}
                   </div>
 
+                  {/* Nút hành động Menu (...) */}
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity relative ml-1">
-                      <button onClick={(e) => { e.stopPropagation(); setActiveTaskMenuId(isMenuActive ? null : taskId); }} className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${isMenuActive ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`}>
+                      <button onClick={(e) => { e.stopPropagation(); setActiveTaskMenuId(isMenuActive ? null : taskId); }} className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${isMenuActive ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:bg-white hover:text-slate-700 hover:shadow-sm'}`}>
                           <span className="material-symbols-outlined text-[18px]">more_horiz</span>
                       </button>
 
-                      {/* ✅ ĐÃ SỬA CSS: Loại bỏ hoàn toàn 'overflow-hidden' khỏi thẻ bao này */}
                       {isMenuActive && (
                           <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.1)] rounded-lg z-50 py-1.5">
                               {listId === 'trash' ? (
@@ -335,7 +350,6 @@ export default function Body() {
                                           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                                       </button>
                                       
-                                      {/* Sub-menu di chuyển (Lấn sang trái 96% để không tạo khe hở) */}
                                       {showMoveMenuFor === taskId && (
                                           <div className="absolute right-[96%] top-[-10px] w-48 bg-white border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-lg z-50 py-1.5 overflow-hidden">
                                               <button onClick={(e) => { e.stopPropagation(); handleMoveTask(taskId, null); }} className={`w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-blue-50 text-blue-600 flex items-center gap-2 ${taskListId === null ? 'bg-blue-50' : ''}`}>
@@ -366,8 +380,9 @@ export default function Body() {
               </div>
           </div>
 
+          {/* Đệ quy subtasks: Thụt lề và giãn cách */}
           {hasSubtasks && isExpanded && (
-              <div className="flex flex-col ml-7 pl-2 border-l-2 border-slate-100 mb-1">
+              <div className="flex flex-col ml-8 pl-2 border-l-2 border-slate-100 mb-1 mt-1">
                   {subtasks.map(st => renderTaskTree(st))}
               </div>
           )}
@@ -407,7 +422,7 @@ export default function Body() {
               groupedSections.map((section) => (
                 <div key={section.id} className="mb-6">
                   {!section.hideHeader && (
-                    <div className="flex items-center gap-1.5 mb-2 px-1 border-b border-slate-50 pb-1.5 cursor-pointer select-none" onClick={() => toggleSection(section.id)}>
+                    <div className="flex items-center gap-1.5 mb-3 px-1 border-b border-slate-50 pb-1.5 cursor-pointer select-none" onClick={() => toggleSection(section.id)}>
                       <span className={`material-symbols-outlined text-[18px] transition-transform ${section.color} ${collapsedSections[section.id] ? '-rotate-90' : ''}`}>expand_more</span>
                       <h3 className={`text-[13px] font-bold tracking-wide ${section.color}`}>{section.label}</h3>
                       <span className="text-[11px] font-bold text-slate-300 ml-1">{section.tasks.length}</span>
@@ -415,7 +430,7 @@ export default function Body() {
                   )}
                   
                   {!collapsedSections[section.id] && (
-                    <div className="flex flex-col pl-1 animate-in fade-in duration-200">
+                    <div className="flex flex-col pl-1 pr-1 animate-in fade-in duration-200">
                       {section.tasks.map((parentTask) => renderTaskTree(parentTask))}
                     </div>
                   )}
@@ -426,7 +441,20 @@ export default function Body() {
         </div>
       </div>
       
-      <TaskDetail task={taskDetailData} onClose={() => setSelectedTaskId(null)} listNameDisplay={listNameDisplay} />
+      <TaskDetail 
+        task={taskDetailData} 
+        onClose={() => setSelectedTaskId(null)} 
+        listNameDisplay={listNameDisplay} 
+        availableLists={availableLists}
+        onTaskUpdated={(updatedTaskId) => {
+           fetchTasks(); 
+           if (updatedTaskId) {
+               fetchDetailTask(updatedTaskId);
+           } else {
+               setSelectedTaskId(null);
+           }
+        }}
+      />
     </div>
   );
 }
