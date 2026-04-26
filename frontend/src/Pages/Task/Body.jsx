@@ -32,10 +32,7 @@ export default function Body() {
   const isDateView = listId === 'today' || listId === 'next7days';
 
   useEffect(() => {
-    const handleClickOutside = () => {
-      setActiveTaskMenuId(null);
-      setShowMoveMenuFor(null);
-    };
+    const handleClickOutside = () => { setActiveTaskMenuId(null); setShowMoveMenuFor(null); };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
@@ -47,9 +44,7 @@ export default function Body() {
             const standalone = res.data.standAloneLists || [];
             const folderLists = (res.data.folders || []).flatMap(f => f.lists || []);
             setAvailableLists([...standalone, ...folderLists]);
-        } catch (err) {
-            console.error("Lỗi lấy danh sách thư mục:", err);
-        }
+        } catch (err) { console.error("Lỗi lấy danh sách:", err); }
     };
     fetchAvailableLists();
   }, []);
@@ -63,9 +58,19 @@ export default function Body() {
       if (listId.startsWith('tag-')) res = await taskService.getTasksByTag(parseInt(listId.replace('tag-', ''), 10));
       else if (!isNaN(parseInt(listId, 10))) res = await taskService.getTasksByList(parseInt(listId, 10));
       else res = await taskService.getTasksByFilter(listId);
-      setTasks(res.data);
-    } catch (err) { console.error("Lỗi:", err); } 
-    finally { setIsLoading(false); }
+      
+      const filteredTasks = res.data.filter(task => {
+          const itemType = task.type !== undefined ? task.type : (task.Type || 0);
+          return itemType !== 1; 
+      });
+
+      setTasks(filteredTasks);
+    } catch (err) { 
+      console.error("Lỗi:", err); 
+    } 
+    finally { 
+      setIsLoading(false); 
+    }
   };
 
   const fetchDetailTask = async (id) => {
@@ -81,11 +86,7 @@ export default function Body() {
   }, [selectedTaskId]);
 
   useEffect(() => {
-    fetchTasks();
-    setSelectedTaskId(null); 
-    setCollapsedSections({});
-    setActiveTaskMenuId(null);
-    setShowMoveMenuFor(null);
+    fetchTasks(); setSelectedTaskId(null); setCollapsedSections({}); setActiveTaskMenuId(null); setShowMoveMenuFor(null);
   }, [listId]);
 
   const handleMouseEnterMove = (taskId) => {
@@ -94,9 +95,7 @@ export default function Body() {
   };
 
   const handleMouseLeaveMove = () => {
-      moveMenuTimeoutRef.current = setTimeout(() => {
-          setShowMoveMenuFor(null);
-      }, 300); 
+      moveMenuTimeoutRef.current = setTimeout(() => setShowMoveMenuFor(null), 300); 
   };
 
   const toggleSection = (sectionId) => setCollapsedSections(prev => ({ ...prev, [sectionId]: !prev[sectionId] }));
@@ -131,20 +130,41 @@ export default function Body() {
         parentTaskId: parentTask.id || parentTask.Id, 
         taskListId: parentTask.taskListId !== undefined ? parentTask.taskListId : parentTask.TaskListId,
         startDate: parentTask.startDate || parentTask.StartDate, 
-        dueDate: parentTask.dueDate || parentTask.DueDate        
+        dueDate: parentTask.dueDate || parentTask.DueDate,
+        type: 0
       });
+    }
+  };
+
+  const handleConvertType = async (task, newType) => {
+    const taskId = task.id || task.Id;
+    const payload = {
+        title: task.title || task.Title,
+        description: task.description || task.Description,
+        priority: task.priority || task.Priority || 0,
+        isCompleted: task.isCompleted || task.IsCompleted,
+        taskListId: task.taskListId !== undefined ? task.taskListId : task.TaskListId,
+        parentTaskId: task.parentTaskId !== undefined ? task.parentTaskId : task.ParentTaskId,
+        type: newType,
+        startDate: task.startDate || task.StartDate, 
+        dueDate: task.dueDate || task.DueDate 
+    };
+
+    try {
+        await taskService.update(taskId, payload);
+        fetchTasks();
+        setActiveTaskMenuId(null);
+        if (selectedTaskId === taskId) fetchDetailTask(taskId); 
+    } catch (err) {
+        alert("Lỗi khi chuyển đổi loại.");
     }
   };
 
   const handleMoveTask = async (taskId, targetListId) => {
     try {
       await api.patch(`/taskitem/${taskId}/move`, { taskListId: targetListId });
-      fetchTasks(); 
-      setActiveTaskMenuId(null);
-      setShowMoveMenuFor(null);
-    } catch (err) {
-      alert("Lỗi khi chuyển danh sách.");
-    }
+      fetchTasks(); setActiveTaskMenuId(null); setShowMoveMenuFor(null);
+    } catch (err) { alert("Lỗi khi chuyển danh sách."); }
   };
 
   const handleToggle = async (e, task) => {
@@ -265,6 +285,7 @@ export default function Body() {
     const durationText = renderDuration(task);
     const taskListId = task.taskListId !== undefined ? task.taskListId : task.TaskListId;
     const priority = task.priority || task.Priority || 0;
+    const itemType = task.type !== undefined ? task.type : (task.Type || 0);
 
     const subtasks = tasks.filter(t => (t.parentTaskId || t.ParentTaskId) === taskId);
     const hasSubtasks = subtasks.length > 0;
@@ -272,23 +293,19 @@ export default function Body() {
     const isMenuActive = activeTaskMenuId === taskId;
     const isSelected = selectedTaskId === taskId;
 
-    // HIỂU ỨNG TÊN TASK KHI ĐƯỢC CHỌN (Tăng đậm và đổi màu xanh nếu chưa hoàn thành)
-    const titleColorClass = (isCompleted || isBlocked) 
-        ? "text-slate-400 line-through" 
-        : isSelected 
-            ? "text-blue-900 font-semibold" 
-            : "text-slate-800";
+    // ✅ BƯỚC ĐỘT PHÁ CHỐNG CHÈN MENU: Kiểm tra nếu Task này HOẶC Subtask của nó đang bật Menu
+    const hasActiveSubtaskMenu = subtasks.some(st => activeTaskMenuId === (st.id || st.Id));
+    const isActiveBranch = isMenuActive || hasActiveSubtaskMenu;
+
+    const titleColorClass = (isCompleted || isBlocked) ? "text-slate-400 line-through" : isSelected ? "text-blue-900 font-semibold" : "text-slate-800";
 
     return (
-      <div key={`tree-${taskId}`} className={`flex flex-col w-full relative ${isMenuActive ? 'z-50' : 'z-10'}`}>
-          {/* ✅ NÂNG CẤP CSS CHO TỪNG DÒNG TASK: Bo góc, viền, đổ bóng, hover khác biệt hoàn toàn */}
+      // Áp dụng lớp trồi z-index động (z-50) nếu nhánh này đang bật Menu
+      <div key={`tree-${taskId}`} className={`flex flex-col w-full relative ${isActiveBranch ? 'z-50' : ''}`}>
           <div 
             onClick={() => setSelectedTaskId(taskId)} 
             className={`group flex items-center py-2.5 px-3 mb-1 cursor-pointer rounded-xl transition-all duration-200 border
-              ${isSelected 
-                  ? "bg-blue-50/80 border-blue-300 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.3)] ring-1 ring-blue-100" 
-                  : "bg-transparent border-transparent hover:bg-slate-100 hover:border-slate-200 hover:shadow-sm"
-              }`}
+              ${isSelected ? "bg-blue-50/80 border-blue-300 shadow-[0_2px_8px_-2px_rgba(59,130,246,0.3)] ring-1 ring-blue-100" : "bg-transparent border-transparent hover:bg-slate-100 hover:border-slate-200 hover:shadow-sm"}`}
           >
               
               {hasSubtasks ? (
@@ -300,16 +317,20 @@ export default function Body() {
               )}
 
               <div className="shrink-0 w-8 flex items-center">
-                  {listId !== 'trash' && !isBlocked && (
+                  {itemType === 0 && listId !== 'trash' && !isBlocked && (
                       <button onClick={(e) => handleToggle(e, task)} className={`w-[18px] h-[18px] rounded-[5px] border-[1.5px] flex items-center justify-center transition-all ${getPriorityClasses(priority, isCompleted)}`}>
                       {isCompleted && <span className="material-symbols-outlined text-white text-[13px] font-bold">check</span>}
                       </button>
                   )}
+                  {itemType === 1 && listId !== 'trash' && !isBlocked && <span className="material-symbols-outlined text-emerald-500 text-[18px]">event</span>}
+                  {itemType === 2 && listId !== 'trash' && !isBlocked && <span className="material-symbols-outlined text-amber-500 text-[18px]">sticky_note_2</span>}
+                  
                   {(listId === 'trash' || isBlocked) && <span className="material-symbols-outlined text-slate-300 text-[18px]">{isBlocked ? 'block' : 'delete'}</span>}
               </div>
 
               <div className="flex-1 min-w-0 pr-4 flex flex-col justify-center">
                   <p className={`text-[14px] truncate transition-colors ${titleColorClass}`}>{task.title || task.Title}</p>
+                  
                   {durationText && (
                       <span className={`text-[11.5px] font-medium flex items-center gap-1 mt-0.5 ${(isCompleted || isBlocked) ? 'text-slate-300 line-through' : 'text-slate-500'}`}>
                       <span className={`material-symbols-outlined text-[13px] ${(isCompleted || isBlocked) ? 'text-slate-300' : 'text-blue-500'}`}>schedule</span> {durationText}
@@ -323,10 +344,10 @@ export default function Body() {
                       {priority === 2 && !isCompleted && !isBlocked && <span className="material-symbols-outlined text-orange-500 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>}
                       {priority === 1 && !isCompleted && !isBlocked && <span className="material-symbols-outlined text-blue-500 text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>flag</span>}
                       {taskListId === null && isDateView && <span className={`font-medium mr-1 ml-1 ${(isCompleted || isBlocked) ? 'text-slate-300' : 'text-slate-400'}`}>Inbox</span>}
+                      
                       {rightLabel && <span className={`${rightLabel.color} font-medium`}>{rightLabel.text}</span>}
                   </div>
 
-                  {/* Nút hành động Menu (...) */}
                   <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity relative ml-1">
                       <button onClick={(e) => { e.stopPropagation(); setActiveTaskMenuId(isMenuActive ? null : taskId); }} className={`w-6 h-6 flex items-center justify-center rounded transition-colors ${isMenuActive ? 'bg-slate-200 text-slate-700' : 'text-slate-400 hover:bg-white hover:text-slate-700 hover:shadow-sm'}`}>
                           <span className="material-symbols-outlined text-[18px]">more_horiz</span>
@@ -342,6 +363,17 @@ export default function Body() {
                               </>
                               ) : (
                               <>
+                                  {itemType !== 2 ? (
+                                      <button onClick={(e) => { e.stopPropagation(); handleConvertType(task, 2); }} className="w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-amber-50 text-amber-600 flex items-center gap-2 transition-colors">
+                                          <span className="material-symbols-outlined text-[16px]">sticky_note_2</span> Chuyển thành Ghi chú
+                                      </button>
+                                  ) : (
+                                      <button onClick={(e) => { e.stopPropagation(); handleConvertType(task, 0); }} className="w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-blue-50 text-blue-600 flex items-center gap-2 transition-colors">
+                                          <span className="material-symbols-outlined text-[16px]">task_alt</span> Chuyển thành Tác vụ
+                                      </button>
+                                  )}
+                                  <div className="h-px bg-slate-100 my-1 mx-2" />
+
                                   <button onClick={(e) => { e.stopPropagation(); handleAddSubtask(task); setActiveTaskMenuId(null); }} className="w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-slate-50 text-slate-700 flex items-center gap-2 transition-colors"><span className="material-symbols-outlined text-[16px] text-blue-500">account_tree</span> Thêm Subtask</button>
                                   
                                   <div className="relative" onMouseEnter={() => handleMouseEnterMove(taskId)} onMouseLeave={handleMouseLeaveMove}>
@@ -350,8 +382,9 @@ export default function Body() {
                                           <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                                       </button>
                                       
+                                      {/* ✅ CĂN CHỈNH LẠI SUB-MENU KHÔNG BỊ RỚT GẤP (Dùng right-[98%]) */}
                                       {showMoveMenuFor === taskId && (
-                                          <div className="absolute right-[96%] top-[-10px] w-48 bg-white border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-lg z-50 py-1.5 overflow-hidden">
+                                          <div className="absolute right-[98%] top-[-10px] w-48 bg-white border border-slate-100 shadow-[0_8px_30px_rgba(0,0,0,0.12)] rounded-lg z-50 py-1.5 overflow-hidden">
                                               <button onClick={(e) => { e.stopPropagation(); handleMoveTask(taskId, null); }} className={`w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-blue-50 text-blue-600 flex items-center gap-2 ${taskListId === null ? 'bg-blue-50' : ''}`}>
                                                   <span className="material-symbols-outlined text-[16px]">inbox</span> Hộp thư đến
                                               </button>
@@ -370,7 +403,7 @@ export default function Body() {
 
                                   <button onClick={(e) => { e.stopPropagation(); handleToggleWontDo(taskId); setActiveTaskMenuId(null); }} className={`w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-orange-50 text-orange-500 flex items-center gap-2 transition-colors`}><span className="material-symbols-outlined text-[16px]">{listId === 'blocked' ? 'undo' : 'block'}</span> {listId === 'blocked' ? 'Tiếp tục làm' : 'Không làm'}</button>
                                   <div className="h-px bg-slate-100 my-1 mx-2" />
-                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(taskId); setActiveTaskMenuId(null); }} className="w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-red-50 text-red-600 flex items-center gap-2 transition-colors"><span className="material-symbols-outlined text-[16px]">delete</span> Xóa tác vụ</button>
+                                  <button onClick={(e) => { e.stopPropagation(); handleDeleteTask(taskId); setActiveTaskMenuId(null); }} className="w-full text-left px-4 py-2 text-[13px] font-medium hover:bg-red-50 text-red-600 flex items-center gap-2 transition-colors"><span className="material-symbols-outlined text-[16px]">delete</span> Xóa</button>
                               </>
                               )}
                           </div>
@@ -380,7 +413,7 @@ export default function Body() {
               </div>
           </div>
 
-          {/* Đệ quy subtasks: Thụt lề và giãn cách */}
+          {/* HIỂN THỊ TASK CON (SUBTASKS) */}
           {hasSubtasks && isExpanded && (
               <div className="flex flex-col ml-8 pl-2 border-l-2 border-slate-100 mb-1 mt-1">
                   {subtasks.map(st => renderTaskTree(st))}

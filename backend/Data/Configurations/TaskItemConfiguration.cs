@@ -34,6 +34,10 @@ namespace backend.Data.Configurations
                     .WithMany(t => t.SubTasks)
                     .HasForeignKey(t => t.ParentTaskId)
                     .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Property(t => t.Type)
+                   .HasConversion<int>()
+                   .HasDefaultValue(ItemType.Task);
         }
     }
 }

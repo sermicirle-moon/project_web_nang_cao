@@ -20,7 +20,6 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
   const [availableTags, setAvailableTags] = useState([]);
   const [selectedTagIds, setSelectedTagIds] = useState([]);
 
-  // Hàm mở Menu Tag và tự động gọi API lấy dữ liệu MỚI NHẤT
   const handleOpenTagMenu = () => {
     const willOpen = !showTagMenu;
     setShowTagMenu(willOpen);
@@ -40,27 +39,18 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
     }
   }, [listId, dateMode]);
 
-  const priorityColors = {
-    0: "text-slate-400",
-    1: "text-blue-500",
-    2: "text-orange-500",
-    3: "text-red-500"
-  };
+  const priorityColors = { 0: "text-slate-400", 1: "text-blue-500", 2: "text-orange-500", 3: "text-red-500" };
 
   const buildDateString = (dateStr, timeStr, allDay) => {
     if (!dateStr) return null;
     const [y, m, d] = dateStr.split('-');
     let hh = "00", mm = "00";
-    if (!allDay && timeStr) {
-      [hh, mm] = timeStr.split(':');
-    }
+    if (!allDay && timeStr) [hh, mm] = timeStr.split(':');
     return `${y}-${m}-${d}T${hh}:${mm}:00`;
   };
 
   const toggleTag = (tagId) => {
-    setSelectedTagIds(prev => 
-      prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]
-    );
+    setSelectedTagIds(prev => prev.includes(tagId) ? prev.filter(id => id !== tagId) : [...prev, tagId]);
   };
 
   const handleSave = () => {
@@ -77,36 +67,22 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
 
     let finalDueDate = buildDateString(dueDate || defaultTargetDate, dueTime, isAllDay);
     let finalStartDate = null;
-    
-    if (dateMode === "duration" && startDate) {
-      finalStartDate = buildDateString(startDate, startTime, isAllDay);
-    }
+    if (dateMode === "duration" && startDate) finalStartDate = buildDateString(startDate, startTime, isAllDay);
 
     onAddTask({
       title: title.trim(),
       startDate: finalStartDate,
       dueDate: finalDueDate,
       priority: priority,
-      tagIds: selectedTagIds 
+      tagIds: selectedTagIds,
+      type: 0 // ✅ LUÔN MẶC ĐỊNH LÀ TASK (0) KHI TẠO TỪ KHUNG NÀY
     });
 
-    setTitle("");
-    setStartDate("");
-    setStartTime("");
-    setDueDate("");
-    setDueTime("");
-    setPriority(0);
-    setIsAllDay(false);
-    setDateMode("date");
-    setSelectedTagIds([]);
-
-    setShowDatePicker(false);
-    setShowPriorityMenu(false);
-    setShowTagMenu(false);
-    setIsFocused(false);
+    setTitle(""); setStartDate(""); setStartTime(""); setDueDate(""); setDueTime(""); setPriority(0);
+    setIsAllDay(false); setDateMode("date"); setSelectedTagIds([]);
+    setShowDatePicker(false); setShowPriorityMenu(false); setShowTagMenu(false); setIsFocused(false);
   };
 
-  // ✅ ĐÂY LÀ ĐIỂM SỬA LỖI: Dòng này bắt buộc phải nằm ở dưới cùng, SAU tất cả các hàm useEffect!
   if (isReadOnlyView) return null;
 
   return (
@@ -130,7 +106,6 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
         <div className="px-4 py-2.5 flex justify-between items-center bg-white rounded-b-lg border-t border-slate-100">
           
           <div className="flex gap-1">
-             
              <div className="relative">
                 <button 
                   onClick={() => { setShowDatePicker(!showDatePicker); setShowPriorityMenu(false); setShowTagMenu(false); }}
@@ -148,26 +123,19 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                           <button 
                             className={`flex-1 py-2 text-center transition-colors ${dateMode === 'date' ? 'text-blue-600 bg-white border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-700'}`}
                             onClick={() => setDateMode('date')}
-                          >
-                            Ngày hạn
-                          </button>
+                          >Ngày hạn</button>
                           {listId !== 'today' && (
                             <button 
                               className={`flex-1 py-2 text-center transition-colors ${dateMode === 'duration' ? 'text-blue-600 bg-white border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-700'}`}
                               onClick={() => setDateMode('duration')}
-                            >
-                              Thời lượng
-                            </button>
+                            >Thời lượng</button>
                           )}
                        </div>
 
                        <div className="p-4 flex flex-col gap-3">
                           <div className="flex items-center mb-1">
                             <label className="flex items-center gap-2 text-[13px] text-slate-600 font-medium cursor-pointer hover:text-slate-800 transition-colors">
-                              <input 
-                                type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} 
-                                className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                              />
+                              <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
                               Cả ngày
                             </label>
                           </div>
@@ -203,9 +171,7 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                   className={`w-8 h-8 flex items-center justify-center rounded transition-colors hover:bg-slate-100 ${priorityColors[priority]}`}
                   title="Mức độ ưu tiên"
                 >
-                  <span className="material-symbols-outlined text-[18px]" style={priority > 0 ? { fontVariationSettings: "'FILL' 1" } : {}}>
-                    flag
-                  </span>
+                  <span className="material-symbols-outlined text-[18px]" style={priority > 0 ? { fontVariationSettings: "'FILL' 1" } : {}}>flag</span>
                 </button>
 
                 {showPriorityMenu && (
@@ -213,14 +179,8 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                     <div className="fixed inset-0 z-30" onClick={() => setShowPriorityMenu(false)}></div>
                     <div className="absolute top-10 left-0 bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.1)] rounded-md p-1.5 flex gap-1 z-40">
                        {[0, 1, 2, 3].map((p) => (
-                         <button
-                           key={p}
-                           onClick={() => { setPriority(p); setShowPriorityMenu(false); }}
-                           className={`w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 transition-colors ${priorityColors[p]}`}
-                         >
-                           <span className="material-symbols-outlined text-[18px]" style={p > 0 ? { fontVariationSettings: "'FILL' 1" } : {}}>
-                             flag
-                           </span>
+                         <button key={p} onClick={() => { setPriority(p); setShowPriorityMenu(false); }} className={`w-8 h-8 flex items-center justify-center rounded hover:bg-slate-100 transition-colors ${priorityColors[p]}`}>
+                           <span className="material-symbols-outlined text-[18px]" style={p > 0 ? { fontVariationSettings: "'FILL' 1" } : {}}>flag</span>
                          </button>
                        ))}
                     </div>
@@ -244,11 +204,7 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                       {availableTags.length === 0 ? (
                         <div className="text-center text-[12px] text-slate-400 py-2">Chưa có thẻ nào</div>
                       ) : availableTags.map(tag => (
-                        <div 
-                          key={tag.id} 
-                          onClick={() => toggleTag(tag.id)}
-                          className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"
-                        >
+                        <div key={tag.id} onClick={() => toggleTag(tag.id)} className="flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer">
                           <div className={`w-[14px] h-[14px] rounded-[3px] border flex items-center justify-center mr-3 transition-colors ${selectedTagIds.includes(tag.id) ? 'bg-blue-500 border-blue-500' : 'border-slate-300'}`}>
                              {selectedTagIds.includes(tag.id) && <span className="material-symbols-outlined text-white text-[10px] font-bold">check</span>}
                           </div>
@@ -260,7 +216,6 @@ export default function TaskInput({ listId, isReadOnlyView, onAddTask }) {
                   </>
                 )}
              </div>
-
           </div>
 
           <div className="flex gap-2 ml-auto">

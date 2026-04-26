@@ -10,5 +10,6 @@
         public bool IsCompleted { get; init; }
         public int? TaskListId { get; init; }
         public int? ParentTaskId { get; init; }
+        public ItemType Type { get; init; } = ItemType.Task;
     }
 }

@@ -22,8 +22,15 @@
         public int? ParentTaskId { get; set; }
         public TaskItem? ParentTask { get; set; }
         public ICollection<TaskItem> SubTasks { get; set; } = new List<TaskItem>();
-
         public ICollection<Tag> Tags { get; set; } = new List<Tag>();
         public ICollection<Attachment> Attachments { get; set; } = new List<Attachment>();
+        public ItemType Type { get; set; } = ItemType.Task;
+    }
+
+    public enum ItemType
+    {
+        Task = 0,    
+        Event = 1,
+        Note = 2
     }
 }
