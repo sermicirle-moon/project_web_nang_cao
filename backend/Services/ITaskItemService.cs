@@ -12,11 +12,12 @@ namespace backend.Services
         Task<TaskItemDetailDto> CreateAsync(CreateTaskItemDto dto, ClaimsPrincipal user);
         Task<TaskItemDetailDto?> UpdateAsync(int id, UpdateTaskItemDto dto, ClaimsPrincipal user);
         Task<bool> ToggleCompleteAsync(int id, string userId);
-        Task<bool> DeleteAsync(int id, string userId); // Xóa mềm
-        Task<bool> HardDeleteAsync(int id, string userId); // Xóa vĩnh viễn
-        Task<bool> EmptyTrashAsync(string userId); // Dọn toàn bộ thùng rác
-        Task<bool> ToggleWontDoAsync(int id, string userId); // Đánh dấu không làm
-        Task<bool> RestoreAsync(int id, string userId); // Khôi phục từ thùng rác
+        Task<bool> DeleteAsync(int id, string userId); 
+        Task<bool> HardDeleteAsync(int id, string userId); 
+        Task<bool> EmptyTrashAsync(string userId); 
+        Task<bool> ToggleWontDoAsync(int id, string userId);
+        Task<bool> RestoreAsync(int id, string userId);
         Task<bool> MoveAsync(int id, int? targetListId, string userId);
+        Task<IEnumerable<TaskItemSummaryDto>> GetCalendarTasksAsync(string userId);
     }
 }

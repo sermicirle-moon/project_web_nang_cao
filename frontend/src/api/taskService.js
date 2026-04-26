@@ -14,4 +14,5 @@ export const taskService = {
   emptyTrash: () => api.delete('/taskitem/trash/empty'),
   toggleWontDo: (id) => api.patch(`/taskitem/${id}/wontdo`),
   restore: (id) => api.patch(`/taskitem/${id}/restore`),
+  getCalendarTasks: () => api.get('/taskitem/calendar'),
 };

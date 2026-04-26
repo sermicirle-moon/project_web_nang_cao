@@ -128,5 +128,13 @@ namespace backend.Controllers
             if (!success) return NotFound(new { message = "Không tìm thấy tác vụ." });
             return Ok(new { message = "Đã chuyển danh sách." });
         }
+
+        [HttpGet("calendar")]
+        public async Task<IActionResult> GetCalendarTasks()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var tasks = await _taskService.GetCalendarTasksAsync(userId!);
+            return Ok(tasks);
+        }
     }
 }

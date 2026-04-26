@@ -15,5 +15,6 @@ namespace backend.Models.DTO.Tasks
         public int? ParentTaskId { get; set; }
         public List<int> TagIds { get; set; } = new List<int>();
         public List<TaskItemSummaryDto> SubTasks { get; set; }
+        public ItemType Type { get; init; }
     }
 }

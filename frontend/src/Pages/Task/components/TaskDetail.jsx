@@ -16,7 +16,6 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
   const [showPriorityMenu, setShowPriorityMenu] = useState(false);
   const [showFolderMenu, setShowFolderMenu] = useState(false); 
 
-  // CÁC STATE CHO QUẢN LÝ NGÀY THÁNG
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [dateMode, setDateMode] = useState("date"); 
   const [isAllDay, setIsAllDay] = useState(false); 
@@ -53,17 +52,11 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
       setDueDate(pDue.d);
       setDueTime(pDue.t === "00:00" ? "" : pDue.t);
 
-      if (tStart && tDue && tStart !== tDue) {
-        setDateMode("duration");
-      } else {
-        setDateMode("date");
-      }
+      if (tStart && tDue && tStart !== tDue) setDateMode("duration");
+      else setDateMode("date");
 
-      if ((!pStart.t || pStart.t === "00:00") && (!pDue.t || pDue.t === "00:00")) {
-        setIsAllDay(true);
-      } else {
-        setIsAllDay(false);
-      }
+      if ((!pStart.t || pStart.t === "00:00") && (!pDue.t || pDue.t === "00:00")) setIsAllDay(true);
+      else setIsAllDay(false);
     }
   }, [task]);
 
@@ -72,6 +65,8 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
   const taskId = task.id || task.Id;
   const isCompleted = task.isCompleted || task.IsCompleted;
   const subTasks = task.subTasks || task.SubTasks || [];
+  
+  const itemType = task.type !== undefined ? task.type : (task.Type || 0);
 
   const currentListId = task.taskListId !== undefined ? task.taskListId : task.TaskListId;
   let currentFolderName = "Hộp thư đến";
@@ -91,15 +86,14 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
       taskListId: currentListId,
       parentTaskId: task.parentTaskId !== undefined ? task.parentTaskId : task.ParentTaskId,
       tagIds: (task.tags || task.Tags || []).map(t => t.id || t.Id),
+      type: itemType, 
       ...updates
     };
 
     try {
       await taskService.update(taskId, payload);
       if (onTaskUpdated) onTaskUpdated(taskId); 
-    } catch (err) {
-      alert("Lỗi khi cập nhật tác vụ.");
-    }
+    } catch (err) { alert("Lỗi khi cập nhật."); }
   };
 
   const handleUpdate = (field, value) => {
@@ -113,28 +107,39 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
         await api.patch(`/taskitem/${taskId}/move`, { taskListId: targetListId });
         setShowFolderMenu(false);
         if (onTaskUpdated) onTaskUpdated(taskId); 
-    } catch (err) {
-        alert("Lỗi khi chuyển danh sách.");
-    }
+    } catch (err) { alert("Lỗi khi chuyển danh sách."); }
   };
 
-  // KẾT HỢP DỮ LIỆU ĐỂ LƯU XUỐNG DB
+  const handleStartDateChange = (e) => {
+      const newDate = e.target.value; setStartDate(newDate);
+      if (!dueDate || dueDate === startDate) setDueDate(newDate);
+  };
+
+  const handleDueDateChange = (e) => {
+      setDueDate(e.target.value);
+      if (dateMode === 'duration' && !startDate) setStartDate(e.target.value);
+  };
+
+  const handleStartTimeChange = (e) => {
+      const newTime = e.target.value; setStartTime(newTime);
+      if (newTime && (!dueTime || dueTime === startTime)) {
+          let [h, m] = newTime.split(':');
+          let nextHour = String((parseInt(h) + 1) % 24).padStart(2, '0');
+          setDueTime(`${nextHour}:${m}`);
+      }
+  };
+
   const buildDateString = (dateStr, timeStr, allDay) => {
     if (!dateStr) return null;
     let hh = "00", mm = "00";
-    if (!allDay && timeStr) {
-      [hh, mm] = timeStr.split(':');
-    }
+    if (!allDay && timeStr) [hh, mm] = timeStr.split(':');
     return `${dateStr}T${hh}:${mm}:00`;
   };
 
-  // HÀM LƯU LỊCH VÀO DATABASE KHI NHẤN "XÁC NHẬN"
   const confirmDateChange = () => {
     const finalDue = buildDateString(dueDate, dueTime, isAllDay);
     let finalStart = null;
-    if (dateMode === "duration" && startDate) {
-      finalStart = buildDateString(startDate, startTime, isAllDay);
-    }
+    if (dateMode === "duration" && startDate) finalStart = buildDateString(startDate, startTime, isAllDay);
     handleUpdateComplex({ dueDate: finalDue, startDate: finalStart });
     setShowDatePicker(false);
   };
@@ -145,25 +150,25 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
     setShowDatePicker(false);
   };
 
-  // ✅ LOGIC MỚI: HIỂN THỊ CHÍNH XÁC KÈM THEO GIỜ, PHÚT VÀ THỜI LƯỢNG LÊN NÚT BẤM
   const displayDateText = () => {
     if (!dueDate && !startDate) return 'Thiết lập ngày';
-
-    const formatDisplay = (dStr, tStr) => {
+    const formatD = (dStr) => {
         if (!dStr) return '';
-        const [, m, d] = dStr.split('-');
-        let result = `${d} Thg ${m}`;
-        if (!isAllDay && tStr) {
-            result += ` ${tStr}`; // Nối thêm giờ phút nếu không phải "Cả ngày"
-        }
-        return result;
+        const [, m, d] = dStr.split('-'); return `${d} Thg ${m}`;
     };
-
     if (dateMode === 'duration' && startDate && dueDate) {
-        return `${formatDisplay(startDate, startTime)} - ${formatDisplay(dueDate, dueTime)}`;
+        if (startDate === dueDate) {
+            if (isAllDay) return `${formatD(startDate)} (Cả ngày)`;
+            return `${formatD(startDate)}, ${startTime || '00:00'} - ${dueTime || '23:59'}`;
+        } else {
+            const sTxt = `${formatD(startDate)} ${!isAllDay && startTime ? startTime : ''}`;
+            const dTxt = `${formatD(dueDate)} ${!isAllDay && dueTime ? dueTime : ''}`;
+            return `${sTxt.trim()} - ${dTxt.trim()}`;
+        }
     }
-    
-    return formatDisplay(dueDate, dueTime) || 'Thiết lập ngày';
+    let result = formatD(dueDate);
+    if (!isAllDay && dueTime) result += `, ${dueTime}`;
+    return result || 'Thiết lập ngày';
   };
 
   const handleToggleComplete = async () => {
@@ -174,7 +179,7 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
   };
 
   const handleDelete = async () => {
-    if (window.confirm("Đưa tác vụ này vào thùng rác?")) {
+    if (window.confirm("Đưa vào thùng rác?")) {
       try {
         await taskService.delete(taskId);
         if (onTaskUpdated) onTaskUpdated(null); 
@@ -186,10 +191,18 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
     <div className="w-[380px] bg-white border-l border-slate-200 flex flex-col z-10 animate-in slide-in-from-right duration-200 shadow-xl">
        <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0 z-20">
           <div className="flex items-center gap-2">
-             <button onClick={handleToggleComplete} className={`w-5 h-5 rounded-[4px] border-[1.5px] flex items-center justify-center transition-colors ${isCompleted ? 'bg-blue-500 border-blue-500' : 'border-slate-400 hover:bg-slate-50'}`}>
-                {isCompleted && <span className="material-symbols-outlined text-white text-[14px] font-bold">check</span>}
-             </button>
-             <span className="text-[12px] font-bold text-slate-400 tracking-wider">CHI TIẾT</span>
+             {itemType === 0 ? (
+                 <button onClick={handleToggleComplete} className={`w-5 h-5 rounded-[4px] border-[1.5px] flex items-center justify-center transition-colors ${isCompleted ? 'bg-blue-500 border-blue-500' : 'border-slate-400 hover:bg-slate-50'}`}>
+                    {isCompleted && <span className="material-symbols-outlined text-white text-[14px] font-bold">check</span>}
+                 </button>
+             ) : itemType === 1 ? (
+                 <span className="material-symbols-outlined text-emerald-500 text-[20px]">event</span>
+             ) : (
+                 <span className="material-symbols-outlined text-amber-500 text-[20px]">sticky_note_2</span>
+             )}
+             <span className="text-[12px] font-bold text-slate-400 tracking-wider">
+                {itemType === 0 ? 'CHI TIẾT' : itemType === 1 ? 'SỰ KIỆN' : 'GHI CHÚ'}
+             </span>
           </div>
           <button onClick={onClose} className="w-7 h-7 rounded hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors">
              <span className="material-symbols-outlined text-[18px]">close</span>
@@ -198,18 +211,18 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
        
        <div className="p-5 overflow-y-auto custom-scrollbar flex-1 pb-20">
           <textarea 
-             className={`w-full text-[18px] font-bold text-slate-800 outline-none resize-none bg-transparent placeholder:text-slate-300 leading-snug transition-colors border-b border-transparent focus:border-blue-200 pb-1 ${isCompleted ? 'line-through text-slate-400' : ''}`}
+             className={`w-full text-[18px] font-bold text-slate-800 outline-none resize-none bg-transparent placeholder:text-slate-300 leading-snug transition-colors border-b border-transparent focus:border-blue-200 pb-1 ${(isCompleted && itemType === 0) ? 'line-through text-slate-400' : ''}`}
              value={title}
              onChange={(e) => setTitle(e.target.value)}
              onBlur={(e) => handleUpdate('title', e.target.value)}
              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } }}
              rows={2}
-             placeholder="Tên công việc..."
+             placeholder={itemType === 2 ? "Tiêu đề ghi chú..." : "Tên công việc..."}
           />
           
           <div className="mt-4 flex flex-wrap gap-2">
             
-            {/* ✅ NÚT VÀ POPUP CHỌN NGÀY THÁNG ĐA DẠNG */}
+            {/* ✅ ĐÃ SỬA: Không giấu nút chọn lịch đi nữa dù là Note */}
             <div className="relative group">
               <button 
                 onClick={() => { setShowDatePicker(!showDatePicker); setShowPriorityMenu(false); setShowFolderMenu(false); }}
@@ -222,60 +235,53 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
               {showDatePicker && (
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowDatePicker(false)}></div>
-                  <div className="absolute top-full mt-1 left-0 w-[300px] bg-white border border-slate-200 shadow-xl rounded-lg z-40 overflow-hidden">
+                  <div className="absolute top-full mt-1 left-0 w-[310px] bg-white border border-slate-200 shadow-xl rounded-lg z-40 overflow-hidden">
                      <div className="flex border-b border-slate-100 text-[12px] font-bold bg-slate-50">
                         <button 
                           className={`flex-1 py-2 text-center transition-colors ${dateMode === 'date' ? 'text-blue-600 bg-white border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-700'}`}
-                          onClick={() => { setDateMode('date'); setStartDate(""); setStartTime(""); }} // Xóa Start Date khi về Ngày đơn
-                        >
-                          Ngày hạn
-                        </button>
+                          onClick={() => { setDateMode('date'); setStartDate(""); setStartTime(""); }}
+                        >Ngày hạn</button>
                         <button 
                           className={`flex-1 py-2 text-center transition-colors ${dateMode === 'duration' ? 'text-blue-600 bg-white border-b-2 border-blue-500' : 'text-slate-500 hover:text-slate-700'}`}
-                          onClick={() => setDateMode('duration')}
-                        >
-                          Thời lượng
-                        </button>
+                          onClick={() => { 
+                              setDateMode('duration'); 
+                              if (!startDate && dueDate) setStartDate(dueDate);
+                              if (!startTime && dueTime) setStartTime(dueTime);
+                          }}
+                        >Thời lượng</button>
                      </div>
 
                      <div className="p-4 flex flex-col gap-3">
                         <div className="flex items-center mb-1">
                           <label className="flex items-center gap-2 text-[13px] text-slate-600 font-medium cursor-pointer hover:text-slate-800 transition-colors">
-                            <input 
-                              type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} 
-                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                            />
+                            <input type="checkbox" checked={isAllDay} onChange={(e) => setIsAllDay(e.target.checked)} className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer" />
                             Cả ngày
                           </label>
                         </div>
 
                         {dateMode === 'date' ? (
                            <div className="flex gap-2">
-                              <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />
+                              <input type="date" value={dueDate} onChange={handleDueDateChange} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />
                               {!isAllDay && <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-[90px] bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />}
                            </div>
                         ) : (
                            <>
                               <div className="flex items-center gap-2">
                                  <span className="text-[11px] font-bold text-slate-400 w-8 text-right">Từ</span>
-                                 <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />
-                                 {!isAllDay && <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-[85px] bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />}
+                                 <input type="date" value={startDate} onChange={handleStartDateChange} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />
+                                 {!isAllDay && <input type="time" value={startTime} onChange={handleStartTimeChange} className="w-[85px] bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />}
                               </div>
                               <div className="flex items-center gap-2">
                                  <span className="text-[11px] font-bold text-slate-400 w-8 text-right">Đến</span>
-                                 <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />
+                                 <input type="date" value={dueDate} onChange={handleDueDateChange} className="flex-1 bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />
                                  {!isAllDay && <input type="time" value={dueTime} onChange={e => setDueTime(e.target.value)} className="w-[85px] bg-slate-50 border border-slate-200 rounded p-1.5 text-[13px] outline-none focus:border-blue-400" />}
                               </div>
                            </>
                         )}
 
                         <div className="flex justify-end gap-2 mt-2">
-                           <button onClick={clearDate} className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded text-[12px] font-semibold transition-colors">
-                              Xóa
-                           </button>
-                           <button onClick={confirmDateChange} className="px-3 py-1.5 bg-blue-500 text-white rounded text-[12px] font-semibold hover:bg-blue-600 transition-colors shadow-sm">
-                              Xác nhận
-                           </button>
+                           <button onClick={clearDate} className="px-3 py-1.5 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded text-[12px] font-semibold transition-colors">Xóa</button>
+                           <button onClick={confirmDateChange} className="px-3 py-1.5 bg-blue-500 text-white rounded text-[12px] font-semibold hover:bg-blue-600 transition-colors shadow-sm">Xác nhận</button>
                         </div>
                      </div>
                   </div>
@@ -283,7 +289,6 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
               )}
             </div>
 
-            {/* MỨC ĐỘ ƯU TIÊN */}
             <div className="relative">
               <button 
                 onClick={() => { setShowPriorityMenu(!showPriorityMenu); setShowDatePicker(false); setShowFolderMenu(false); }}
@@ -312,7 +317,6 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
               )}
             </div>
 
-            {/* NÚT CHUYỂN LIST (FOLDER) */}
             <div className="relative">
               <button 
                 onClick={() => { setShowFolderMenu(!showFolderMenu); setShowDatePicker(false); setShowPriorityMenu(false); }}
@@ -326,19 +330,12 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
                 <>
                   <div className="fixed inset-0 z-30" onClick={() => setShowFolderMenu(false)}></div>
                   <div className="absolute top-full left-0 mt-1 w-48 bg-white border border-slate-100 shadow-xl rounded-md py-1.5 flex flex-col z-40 max-h-60 overflow-y-auto custom-scrollbar">
-                      <button 
-                          onClick={() => handleMoveTask(null)} 
-                          className={`w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-blue-50 flex items-center gap-2 ${currentListId === null ? 'text-blue-600 bg-blue-50' : 'text-slate-600'}`}
-                      >
+                      <button onClick={() => handleMoveTask(null)} className={`w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-blue-50 flex items-center gap-2 ${currentListId === null ? 'text-blue-600 bg-blue-50' : 'text-slate-600'}`}>
                           <span className="material-symbols-outlined text-[16px]">inbox</span> Hộp thư đến
                       </button>
                       <div className="h-px bg-slate-100 my-1 mx-2" />
                       {availableLists?.map(l => (
-                          <button 
-                              key={l.id} 
-                              onClick={() => handleMoveTask(l.id)} 
-                              className={`w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-slate-50 flex items-center gap-2 ${currentListId === l.id ? 'bg-slate-50 text-slate-900' : 'text-slate-600'}`}
-                          >
+                          <button key={l.id} onClick={() => handleMoveTask(l.id)} className={`w-full text-left px-3 py-2 text-[12px] font-medium hover:bg-slate-50 flex items-center gap-2 ${currentListId === l.id ? 'bg-slate-50 text-slate-900' : 'text-slate-600'}`}>
                               <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color || '#cbd5e1' }}></span>
                               <span className="truncate">{l.name}</span>
                           </button>
@@ -350,7 +347,6 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
 
           </div>
 
-          {/* DANH SÁCH SUBTASKS */}
           {subTasks.length > 0 && (
              <div className="mt-8 mb-4">
                 <div className="flex items-center justify-between mb-3 px-1">
@@ -375,12 +371,11 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
              </div>
           )}
 
-          {/* DESCRIPTION */}
           <div className="mt-8">
              <h4 className="text-[12px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Mô tả</h4>
              <textarea 
                 className="w-full text-[13.5px] text-slate-700 bg-slate-50 border border-transparent focus:border-blue-300 focus:bg-white focus:shadow-sm rounded-lg p-3 outline-none resize-none transition-all custom-scrollbar placeholder:text-slate-400"
-                placeholder="Thêm chi tiết cho công việc..."
+                placeholder={itemType === 2 ? "Thêm nội dung ghi chú..." : "Thêm chi tiết cho công việc..."}
                 rows={8}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -389,7 +384,6 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
           </div>
        </div>
 
-       {/* FOOTER */}
        <div className="absolute bottom-0 left-0 w-full px-5 py-3 border-t border-slate-100 bg-white flex items-center justify-between text-[12px] text-slate-400 z-20">
           <button className="hover:text-slate-600 transition-colors flex items-center justify-center w-8 h-8 rounded hover:bg-slate-100" title="Ghim lên đầu">
              <span className="material-symbols-outlined text-[18px]">push_pin</span>
@@ -397,7 +391,7 @@ export default function TaskDetail({ task, onClose, listNameDisplay, availableLi
           
           <span>Đã lưu tự động</span>
           
-          <button onClick={handleDelete} className="hover:text-rose-600 transition-colors flex items-center justify-center w-8 h-8 rounded hover:bg-rose-50 text-slate-400" title="Xóa tác vụ">
+          <button onClick={handleDelete} className="hover:text-rose-600 transition-colors flex items-center justify-center w-8 h-8 rounded hover:bg-rose-50 text-slate-400" title="Xóa">
              <span className="material-symbols-outlined text-[18px]">delete</span>
           </button>
        </div>

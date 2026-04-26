@@ -79,7 +79,11 @@ namespace backend.Services
             if (existingTask == null) return null;
 
             _mapper.Map(dto, existingTask);
+
             existingTask.DueDate = dto.DueDate;
+            existingTask.StartDate = dto.StartDate;
+            existingTask.Type = dto.Type;
+
             existingTask.Tags.Clear();
 
             if (dto.TagIds != null && dto.TagIds.Any())
@@ -188,6 +192,19 @@ namespace backend.Services
             task.TaskListId = targetListId; // Đổi danh sách cha của nó
             await _context.SaveChangesAsync();
             return true;
+        }
+
+        public async Task<IEnumerable<TaskItemSummaryDto>> GetCalendarTasksAsync(string userId)
+        {
+            var tasks = await _context.TaskItems
+                .Where(t => t.UserId == userId &&
+                            !t.IsArchived &&
+                            !t.IsDeleted &&
+                            t.Type != ItemType.Note &&
+                            (t.StartDate.HasValue || t.DueDate.HasValue))
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<TaskItemSummaryDto>>(tasks);
         }
     }
 }
