@@ -14,6 +14,9 @@
         public bool IsArchived { get; set; }
         public bool IsDeleted { get; set; }
 
+        public bool IsUrgent { get; set; } = false;
+        public bool IsImportant { get; set; } = false;
+        public int? EisenhowerSyncId { get; set; }  // Liên kết với EisenhowerTask
         public int? TaskListId { get; set; }
         public TaskList? TaskList { get; set; }
 

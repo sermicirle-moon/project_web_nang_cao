@@ -10,12 +10,20 @@ export default function Navbar() {
   const { user, logout } = useAuth(); // thêm
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   const [showDropdown, setShowDropdown] = useState(false);
+  
   const handleLogout = () => {
     logout();
     navigate('/');
     setShowDropdown(false);
   }
   
+  const navLinkClass = (path) => 
+    `font-headline font-bold text-sm transition-colors ${
+      location.pathname === path 
+        ? 'text-primary border-b-2 border-primary/50 pb-1' 
+        : 'text-on-surface-variant hover:text-primary'
+    }`;
+
   return (
     // Đã đổi 'fixed' thành 'sticky'
     <nav className="sticky top-0 w-full z-50 bg-white/70 backdrop-blur-xl shadow-[0_20px_40px_rgba(0,53,52,0.08)]">

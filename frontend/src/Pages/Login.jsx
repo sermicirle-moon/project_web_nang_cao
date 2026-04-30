@@ -66,7 +66,7 @@ function Login() {
             <img src={person} alt="Login illustration" className="w-full max-w-md mx-auto" />
           </div>
           <div className="mt-8 text-center">
-            <h2 className="font-headline font-black text-3xl text-on-surface">TaskMaster Pro</h2>
+            <h2 className="font-headline font-black text-3xl text-on-surface">OrganizeMe</h2>
             <p className="text-on-surface-variant mt-2">Access your profile and settings</p>
           </div>
         </div>

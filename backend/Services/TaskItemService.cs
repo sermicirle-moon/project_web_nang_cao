@@ -13,11 +13,13 @@ namespace backend.Services
     {
         private readonly AppDbContext _context;
         private readonly IMapper _mapper;
+        private readonly IEisenhowerSyncService _syncService;
 
-        public TaskItemService(AppDbContext context, IMapper mapper)
+        public TaskItemService(AppDbContext context, IMapper mapper, IEisenhowerSyncService syncService)
         {
             _context = context;
             _mapper = mapper;
+            _syncService = syncService;
         }
 
         public async Task<TaskItemDetailDto> CreateAsync(CreateTaskItemDto dto, ClaimsPrincipal user)
@@ -34,7 +36,7 @@ namespace backend.Services
 
             _context.TaskItems.Add(taskItem);
             await _context.SaveChangesAsync();
-
+            await _syncService.SyncFromTaskItemAsync(taskItem);
             return _mapper.Map<TaskItemDetailDto>(taskItem);
         }
 
@@ -92,6 +94,7 @@ namespace backend.Services
             }
 
             await _context.SaveChangesAsync();
+            await _syncService.SyncFromTaskItemAsync(existingTask);
             return _mapper.Map<TaskItemDetailDto>(existingTask);
         }
 
@@ -130,22 +133,29 @@ namespace backend.Services
 
         public async Task<bool> ToggleCompleteAsync(int id, string userId)
         {
-            var rootTask = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
-            if (rootTask == null) return false;
-            bool newState = !rootTask.IsCompleted;
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            if (task == null) return false;
 
-            await UpdateStatusRecursiveAsync(id, userId, t => {
-                t.IsCompleted = newState;
-                t.Status = newState ? Models.TaskStatus.Completed : Models.TaskStatus.Todo;
-            });
+            task.IsCompleted = !task.IsCompleted;
             await _context.SaveChangesAsync();
+
+            // THÊM DÒNG NÀY: Đồng bộ trạng thái sang Eisenhower
+            await _syncService.SyncFromTaskItemAsync(task); 
+
             return true;
         }
 
         public async Task<bool> DeleteAsync(int id, string userId)
         {
-            await UpdateStatusRecursiveAsync(id, userId, t => t.IsArchived = true);
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            if (task == null) return false;
+
+            task.IsDeleted = true; // Đánh dấu xóa mềm
             await _context.SaveChangesAsync();
+
+            // THÊM DÒNG NÀY: Đồng bộ trạng thái xóa sang Eisenhower
+            await _syncService.SyncFromTaskItemAsync(task);
+
             return true;
         }
 
