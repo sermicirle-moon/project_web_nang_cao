@@ -34,20 +34,26 @@ export default function Eisenhower() {
     try {
       const res = await eisenhowerService.getAll();
       const grouped = { do: [], schedule: [], delegate: [], eliminate: [] };
-      // Ví dụ trong Eisenhower.jsx, lúc nhận data từ API:
       
-      res.data.forEach((task) => {
+      const pureTasks = res.data.filter(task => {
+         // Backend cũ của bạn có thể trả về 'Type' (viết hoa) hoặc 'type' (viết thường)
+         const itemType = task.type !== undefined ? task.type : (task.Type || 0);
+         return itemType === 0; 
+      });
+      
+      pureTasks.forEach((task) => {
             const quadrant = task.important && task.urgent ? "do" :
                              task.important && !task.urgent ? "schedule" :
                              !task.important && task.urgent ? "delegate" : "eliminate";
             grouped[quadrant].push(task);
         });
+        
         for (const key in grouped) {
             grouped[key].sort((a, b) => (a.isCompleted === b.isCompleted) ? 0 : a.isCompleted ? 1 : -1);
         }
       setTasks(grouped);
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi lấy dữ liệu Eisenhower:", err);
     } finally {
       setLoading(false);
     }

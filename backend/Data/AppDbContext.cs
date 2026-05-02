@@ -18,7 +18,6 @@ namespace backend.Data
         public DbSet<TaskFolder> TaskFolders { get; set; }
         public DbSet<Habit> Habits { get; set; }
         public DbSet<HabitLog> HabitLogs { get; set; }
-        public DbSet<EisenhowerTask> EisenhowerTasks { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
