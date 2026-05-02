@@ -137,9 +137,6 @@ export default function MainCalendar() {
 
   useEffect(() => { fetchCalendarTasks(); }, []);
 
-  // ==========================================
-  // XỬ LÝ QUÉT CHUỘT / CLICK TẠO MỚI TRÊN LỊCH
-  // ==========================================
   const handleDateSelect = (selectInfo) => {
     let sDate = selectInfo.startStr.split('T')[0];
     let sTime = selectInfo.startStr.split('T')[1]?.substring(0,5) || "09:00";
@@ -366,65 +363,96 @@ export default function MainCalendar() {
       </div>
 
       {/* ========================================================= */}
-      {/* POPUP (MODAL) CẬP NHẬT/TẠO MỚI HIỆN ĐẠI */}
+      {/* POPUP (MODAL) CẬP NHẬT/TẠO MỚI HIỆN ĐẠI (Đã mở rộng UI) */}
       {/* ========================================================= */}
       {modal.isOpen && (
-        <div className="fixed inset-0 z-[999] bg-slate-900/30 backdrop-blur-[2px] flex items-center justify-center p-4">
-           <div className="bg-white w-[460px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200">
+        <div className="fixed inset-0 z-[999] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+           {/* ĐÃ SỬA: Thay w-[460px] thành w-full max-w-[520px] để Modal rộng và thoáng hơn */}
+           <div className="bg-white w-full max-w-[520px] rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200 border border-slate-200">
                
                <div className="px-6 py-4 flex justify-between items-center bg-slate-50 border-b border-slate-100">
                    <h2 className="text-[15px] font-bold text-slate-700 uppercase tracking-wider">
                        {modal.mode === 'create' ? 'Thêm mới vào Lịch' : 'Chỉnh sửa Lịch'}
                    </h2>
-                   <button onClick={() => setModal({...modal, isOpen: false})} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-400 transition-colors">
+                   <button onClick={() => setModal({...modal, isOpen: false})} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-200 text-slate-500 hover:text-slate-700 transition-colors">
                        <span className="material-symbols-outlined text-[20px]">close</span>
                    </button>
                </div>
                
-               <div className="p-6 flex flex-col gap-5">
+               <div className="p-6 flex flex-col gap-6">
                   <input 
                      value={modal.title} 
                      onChange={e => setModal({...modal, title: e.target.value})}
                      placeholder="Tên công việc / sự kiện..." 
                      autoFocus
-                     className="text-xl font-bold text-slate-800 border-b-2 border-slate-200 focus:border-blue-500 outline-none pb-2 transition-colors placeholder:text-slate-300" 
+                     className="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-200 focus:border-blue-500 outline-none pb-2 transition-colors placeholder:text-slate-300" 
                   />
                   
                   {/* Phân loại Type */}
-                  <div className="flex gap-6 mt-1">
-                     <label className="flex items-center gap-2 cursor-pointer text-[14px] font-medium text-slate-700">
-                        <input type="radio" checked={modal.type === 0} onChange={() => setModal({...modal, type: 0})} className="w-4 h-4 text-blue-600 focus:ring-blue-500" />
-                        <span className="material-symbols-outlined text-[18px] text-blue-500">task_alt</span>
+                  <div className="flex gap-8 mt-1">
+                     <label className="flex items-center gap-2 cursor-pointer text-[14px] font-medium text-slate-700 hover:text-blue-600 transition-colors">
+                        <input type="radio" checked={modal.type === 0} onChange={() => setModal({...modal, type: 0})} className="w-4.5 h-4.5 text-blue-600 focus:ring-blue-500" />
+                        <span className="material-symbols-outlined text-[20px] text-blue-500">task_alt</span>
                         Công việc (Task)
                      </label>
-                     <label className="flex items-center gap-2 cursor-pointer text-[14px] font-medium text-slate-700">
-                        <input type="radio" checked={modal.type === 1} onChange={() => setModal({...modal, type: 1})} className="w-4 h-4 text-emerald-600 focus:ring-emerald-500" />
-                        <span className="material-symbols-outlined text-[18px] text-emerald-500">event</span>
+                     <label className="flex items-center gap-2 cursor-pointer text-[14px] font-medium text-slate-700 hover:text-emerald-600 transition-colors">
+                        <input type="radio" checked={modal.type === 1} onChange={() => setModal({...modal, type: 1})} className="w-4.5 h-4.5 text-emerald-600 focus:ring-emerald-500" />
+                        <span className="material-symbols-outlined text-[20px] text-emerald-500">event</span>
                         Sự kiện (Event)
                      </label>
                   </div>
 
-                  <hr className="border-slate-100 my-1"/>
+                  <div className="w-full h-px bg-slate-100 my-1"></div>
 
                   {/* Cấu hình Ngày giờ */}
-                  <label className="flex items-center gap-2 cursor-pointer text-[13px] font-semibold text-slate-600 w-fit">
-                     <input type="checkbox" checked={modal.isAllDay} onChange={(e) => setModal({...modal, isAllDay: e.target.checked})} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" /> 
-                     Cả ngày (All Day)
-                  </label>
+                  <div className="flex flex-col gap-4">
+                     <label className="flex items-center gap-2 cursor-pointer text-[14px] font-semibold text-slate-700 w-fit hover:text-blue-600 transition-colors">
+                        <input type="checkbox" checked={modal.isAllDay} onChange={(e) => setModal({...modal, isAllDay: e.target.checked})} className="w-4.5 h-4.5 rounded text-blue-600 focus:ring-blue-500" /> 
+                        Cả ngày (All Day)
+                     </label>
 
-                  <div className="flex items-center gap-4">
-                     <div className="flex flex-col flex-1 gap-1.5">
-                        <span className="text-[12px] font-bold text-slate-400 uppercase">Bắt đầu</span>
-                        <div className="flex gap-2">
-                           <input type="date" value={modal.startDate} onChange={e => setModal({...modal, startDate: e.target.value})} className="border border-slate-200 rounded-lg p-2.5 flex-1 text-[13px] outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100" />
-                           {!modal.isAllDay && <input type="time" value={modal.startTime} onChange={e => setModal({...modal, startTime: e.target.value})} className="border border-slate-200 rounded-lg p-2.5 w-[90px] text-[13px] outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100" />}
+                     {/* ĐÃ SỬA: Sử dụng Grid thay vì Flex để các thẻ input không bao giờ bị bóp méo hay tràn */}
+                     <div className="grid grid-cols-2 gap-6 w-full">
+                        {/* Cột Bắt đầu */}
+                        <div className="flex flex-col gap-2">
+                           <span className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Bắt đầu lúc</span>
+                           <div className="flex gap-2 w-full">
+                              <input 
+                                 type="date" 
+                                 value={modal.startDate} 
+                                 onChange={e => setModal({...modal, startDate: e.target.value})} 
+                                 className="w-full border border-slate-200 rounded-lg p-2.5 text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" 
+                              />
+                              {!modal.isAllDay && (
+                                 <input 
+                                    type="time" 
+                                    value={modal.startTime} 
+                                    onChange={e => setModal({...modal, startTime: e.target.value})} 
+                                    className="w-[100px] shrink-0 border border-slate-200 rounded-lg p-2.5 text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" 
+                                 />
+                              )}
+                           </div>
                         </div>
-                     </div>
-                     <div className="flex flex-col flex-1 gap-1.5">
-                        <span className="text-[12px] font-bold text-slate-400 uppercase">Kết thúc</span>
-                        <div className="flex gap-2">
-                           <input type="date" value={modal.endDate} onChange={e => setModal({...modal, endDate: e.target.value})} className="border border-slate-200 rounded-lg p-2.5 flex-1 text-[13px] outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100" />
-                           {!modal.isAllDay && <input type="time" value={modal.endTime} onChange={e => setModal({...modal, endTime: e.target.value})} className="border border-slate-200 rounded-lg p-2.5 w-[90px] text-[13px] outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100" />}
+
+                        {/* Cột Kết thúc */}
+                        <div className="flex flex-col gap-2">
+                           <span className="text-[12px] font-bold text-slate-400 uppercase tracking-wide">Kết thúc lúc</span>
+                           <div className="flex gap-2 w-full">
+                              <input 
+                                 type="date" 
+                                 value={modal.endDate} 
+                                 onChange={e => setModal({...modal, endDate: e.target.value})} 
+                                 className="w-full border border-slate-200 rounded-lg p-2.5 text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" 
+                              />
+                              {!modal.isAllDay && (
+                                 <input 
+                                    type="time" 
+                                    value={modal.endTime} 
+                                    onChange={e => setModal({...modal, endTime: e.target.value})} 
+                                    className="w-[100px] shrink-0 border border-slate-200 rounded-lg p-2.5 text-[13.5px] font-medium text-slate-700 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all" 
+                                 />
+                              )}
+                           </div>
                         </div>
                      </div>
                   </div>
@@ -432,12 +460,12 @@ export default function MainCalendar() {
 
                <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3">
                   {modal.mode === 'edit' && (
-                     <button className="mr-auto text-rose-500 hover:bg-rose-50 px-3 py-2 rounded-lg font-bold text-[13px] transition-colors flex items-center gap-1" onClick={handleModalDelete}>
+                     <button className="mr-auto text-rose-500 hover:bg-rose-100 hover:text-rose-600 px-4 py-2.5 rounded-lg font-bold text-[13.5px] transition-colors flex items-center gap-1.5" onClick={handleModalDelete}>
                          <span className="material-symbols-outlined text-[18px]">delete</span> Xóa
                      </button>
                   )}
-                  <button className="text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-lg font-bold text-[13px] transition-colors" onClick={() => setModal({...modal, isOpen: false})}>Hủy bỏ</button>
-                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-bold text-[13px] shadow-sm transition-colors" onClick={handleModalSave}>Xác nhận Lưu</button>
+                  <button className="text-slate-600 hover:bg-slate-200 px-5 py-2.5 rounded-lg font-bold text-[13.5px] transition-colors" onClick={() => setModal({...modal, isOpen: false})}>Hủy bỏ</button>
+                  <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg font-bold text-[13.5px] shadow-sm transition-all active:scale-95" onClick={handleModalSave}>Xác nhận Lưu</button>
                </div>
            </div>
         </div>

@@ -28,26 +28,14 @@ namespace backend.Controllers
         }
 
         [HttpPost]
-    public async Task<IActionResult> CreateTask([FromBody] CreateEisenhowerTaskDTO dto)
-    {
-        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId == null) return Unauthorized();
-
-        var task = new EisenhowerTask
+        public async Task<IActionResult> CreateTask([FromBody] CreateEisenhowerTaskDTO dto)
         {
-            Title = dto.Title,
-            Description = dto.Description,
-            StartDate = dto.StartDate,
-            DueDate = dto.DueDate,
-            Priority = dto.Priority,
-            Urgent = dto.Urgent,
-            Important = dto.Important,
-            UserId = userId
-        };
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
             var created = await _service.CreateTaskAsync(userId, dto);
-            // KHÔNG sync sang TaskItem (theo đúng yêu cầu)
             return Ok(created);
-    }
+        }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateTask(int id, [FromBody] UpdateEisenhowerTaskDTO dto)

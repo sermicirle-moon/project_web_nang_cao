@@ -8,18 +8,17 @@ namespace backend.Services
     public class EisenhowerTaskService : IEisenhowerTaskService
     {
         private readonly AppDbContext _context;
-        private readonly IEisenhowerSyncService _syncService;
 
-        public EisenhowerTaskService(AppDbContext context, IEisenhowerSyncService syncService)
+        public EisenhowerTaskService(AppDbContext context)
         {
-            _syncService = syncService;
             _context = context;
         }
 
         public async Task<List<EisenhowerTaskResponseDTO>> GetUserTasksAsync(string userId)
         {
-            var tasks = await _context.EisenhowerTasks
-                .Where(t => t.UserId == userId && !t.IsDeleted)
+            var tasks = await _context.TaskItems
+                // ? CH? L?Y TASK (0), B? QUA EVENT V� NOTE
+                .Where(t => t.UserId == userId && !t.IsDeleted && !t.IsArchived && t.Type == ItemType.Task)
                 .OrderByDescending(t => t.CreatedAt)
                 .ToListAsync();
 
@@ -28,64 +27,71 @@ namespace backend.Services
 
         public async Task<EisenhowerTaskResponseDTO> CreateTaskAsync(string userId, CreateEisenhowerTaskDTO dto)
         {
-            var task = new EisenhowerTask
+            int priority = 0;
+            if (dto.Urgent && dto.Important) priority = 3;
+            else if (!dto.Urgent && dto.Important) priority = 2;
+            else if (dto.Urgent && !dto.Important) priority = 1;
+
+            var task = new TaskItem
             {
                 Title = dto.Title,
                 Description = dto.Description,
                 StartDate = dto.StartDate,
                 DueDate = dto.DueDate,
-                Priority = dto.Priority,
-                Urgent = dto.Urgent,
-                Important = dto.Important,
+                Priority = priority,
+                IsUrgent = dto.Urgent,
+                IsImportant = dto.Important,
                 UserId = userId,
                 IsCompleted = false,
-                IsDeleted = false
+                IsArchived = false,
+                Type = ItemType.Task
             };
-            _context.EisenhowerTasks.Add(task);
+
+            _context.TaskItems.Add(task);
             await _context.SaveChangesAsync();
             return MapToResponse(task);
         }
 
         public async Task<EisenhowerTaskResponseDTO?> UpdateTaskAsync(int id, string userId, UpdateEisenhowerTaskDTO dto)
         {
-            var task = await _context.EisenhowerTasks.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
             if (task == null) return null;
+
+            int priority = 0;
+            if (dto.Urgent && dto.Important) priority = 3;
+            else if (!dto.Urgent && dto.Important) priority = 2;
+            else if (dto.Urgent && !dto.Important) priority = 1;
 
             task.Title = dto.Title;
             task.Description = dto.Description;
             task.StartDate = dto.StartDate;
             task.DueDate = dto.DueDate;
-            task.Priority = dto.Priority;
-            task.Urgent = dto.Urgent;
-            task.Important = dto.Important;
+            task.Priority = priority;
+            task.IsUrgent = dto.Urgent;
+            task.IsImportant = dto.Important;
             task.IsCompleted = dto.IsCompleted;
-            task.IsDeleted = false; // Khi cập nhật, đảm bảo task không bị đánh dấu là đã xóa
+
             await _context.SaveChangesAsync();
-            await _syncService.SyncToTaskItemAsync(task);
             return MapToResponse(task);
         }
 
         public async Task<bool> DeleteTaskAsync(int id, string userId)
         {
-            var task = await _context.EisenhowerTasks
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
+            var task = await _context.TaskItems.FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId);
             if (task == null) return false;
 
-            task.IsDeleted = true;
-            
+            task.IsArchived = true;
             await _context.SaveChangesAsync();
-            // Đồng bộ sang TaskItem (đánh dấu IsDeleted = true)
-            await _syncService.SyncToTaskItemAsync(task);
             return true;
         }
 
-        private EisenhowerTaskResponseDTO MapToResponse(EisenhowerTask task)
+        private EisenhowerTaskResponseDTO MapToResponse(TaskItem task)
         {
             string quadrant = "";
-            if (task.Important && task.Urgent) quadrant = "Do";
-            else if (task.Important && !task.Urgent) quadrant = "Schedule";
-            else if (!task.Important && task.Urgent) quadrant = "Delegate";
-            else quadrant = "Eliminate";
+            if (task.IsImportant && task.IsUrgent) quadrant = "do";
+            else if (task.IsImportant && !task.IsUrgent) quadrant = "schedule";
+            else if (!task.IsImportant && task.IsUrgent) quadrant = "delegate";
+            else quadrant = "eliminate";
 
             return new EisenhowerTaskResponseDTO
             {
@@ -93,10 +99,9 @@ namespace backend.Services
                 Title = task.Title,
                 Description = task.Description,
                 DueDate = task.DueDate,
-                Urgent = task.Urgent,
+                Urgent = task.IsUrgent,
                 IsCompleted = task.IsCompleted,
-                
-                Important = task.Important,
+                Important = task.IsImportant,
                 Quadrant = quadrant,
                 CreatedAt = task.CreatedAt
             };

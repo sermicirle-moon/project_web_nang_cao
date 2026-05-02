@@ -1,6 +1,6 @@
 ﻿namespace backend.Models
 {
-    public class TaskItem: BaseEntity
+    public class TaskItem : BaseEntity
     {
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
@@ -16,7 +16,7 @@
 
         public bool IsUrgent { get; set; } = false;
         public bool IsImportant { get; set; } = false;
-        public int? EisenhowerSyncId { get; set; }  // Liên kết với EisenhowerTask
+
         public int? TaskListId { get; set; }
         public TaskList? TaskList { get; set; }
 
@@ -32,7 +32,7 @@
 
     public enum ItemType
     {
-        Task = 0,    
+        Task = 0,
         Event = 1,
         Note = 2
     }

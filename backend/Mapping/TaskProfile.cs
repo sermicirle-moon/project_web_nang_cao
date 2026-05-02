@@ -18,7 +18,8 @@ namespace backend.Mapping
                            opt => opt.MapFrom(src => src.Tags.Select(t => t.Id).ToList()));
 
             CreateMap<UpdateTaskItemDto, TaskItem>()
-                .ForMember(dest => dest.Tags, opt => opt.Ignore());
+                .ForMember(dest => dest.Tags, opt => opt.Ignore())
+                .ForMember(dest => dest.Type, opt => opt.Condition(src => src.Type.HasValue));
         }
     }
 }
