@@ -306,13 +306,34 @@ export default function TimeFocus() {
               <h3 className="font-semibold text-lg text-gray-700 mb-4">Daily Progress</h3>
               <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Tasks focused</span>
-                    <span>4.5 / 8</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div className="bg-blue-500 h-2 rounded-full" style={{ width: "56%" }}></div>
-                  </div>
+                  {(() => {
+  // 1. Lấy tổng thời gian focus (giây) của session hiện tại
+  const totalSeconds = getTotalFocusDuration();
+  
+  // 2. Mục tiêu là 2 giờ (2 * 60 * 60 = 7200 giây)
+  const targetSeconds = 2 * 60 * 60; 
+  
+  // 3. Tính phần trăm tiến độ (dùng Math.min để không vượt quá 100%)
+  const progressPercent = Math.min((totalSeconds / targetSeconds) * 100, 100);
+  
+  // 4. Quy đổi số giây ra giờ để hiển thị text (làm tròn 2 chữ số)
+  const hoursFocused = (totalSeconds / 3600).toFixed(2);
+
+  return (
+    <div>
+      <div className="flex justify-between text-sm text-gray-600">
+        <span>Time focused</span>
+        <span>{hoursFocused}h / 2h</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+        <div 
+          className="bg-blue-500 h-2 rounded-full transition-all duration-1000" 
+          style={{ width: `${progressPercent}%` }}
+        ></div>
+      </div>
+    </div>
+  );
+})()}
                 </div>
                 <div>
                   <div className="flex justify-between text-sm text-gray-600">
@@ -321,7 +342,10 @@ export default function TimeFocus() {
                   </div>
                 </div>
               </div>
-              <button className="mt-6 block w-full text-center bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition">
+              <button 
+              onClick={()=>navigate('/features')}
+              className="mt-6 block w-full text-center bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition"
+              >
                 New Task
               </button>
             </div>
@@ -365,10 +389,12 @@ export default function TimeFocus() {
             <div className="bg-white rounded-2xl shadow-md p-6">
               <h3 className="font-semibold text-lg text-gray-700 mb-4">Quick Actions</h3>
               <div className="flex flex-wrap gap-3">
-                <button className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition">
+                <button onClick={()=>navigate('/features')}
+                className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition">
                   Generate Sub-tasks
                 </button>
-                <button className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition">
+                <button onClick={()=>navigate('/calendar')}
+                className="px-4 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition">
                   Bulk Reschedule
                 </button>
               </div>
